@@ -24,6 +24,15 @@ import { PortalPacienteScreen } from './components/screens/PortalPacienteScreen'
 
 const todayDate = new Date().toISOString().slice(0, 10)
 
+function normalizeRole(role) {
+  return String(role || '').trim().toUpperCase()
+}
+
+function isPacienteRole(role) {
+  const normalized = normalizeRole(role)
+  return ['PACIENTE', 'PATIENT', 'ROLE_PACIENTE', 'ROLE_PATIENT'].includes(normalized)
+}
+
 export default function App() {
   const [activeScreen, setActiveScreen] = useState('login-profesional')
   const [statusMsg, setStatusMsg] = useState('')
@@ -102,6 +111,11 @@ export default function App() {
       try {
         const me = await authApi.me()
         setCurrentUser(me)
+        if (isPacienteRole(me?.role)) {
+          setActiveScreen('portal-paciente')
+          return
+        }
+        setActiveScreen('dashboard')
         await loadProfesionales()
       } catch {
         // token expirado, inválido o backend error → limpiar silenciosamente
@@ -152,7 +166,12 @@ export default function App() {
     e.preventDefault()
     await withFeedback(async () => {
       const payload = await authApi.login(auth)
-      setCurrentUser({ id: payload.userId, email: payload.username, displayName: payload.displayName, role: payload.role })
+      const loggedUser = { id: payload.userId, email: payload.username, displayName: payload.displayName, role: payload.role }
+      setCurrentUser(loggedUser)
+      if (isPacienteRole(loggedUser.role)) {
+        setActiveScreen('portal-paciente')
+        return payload
+      }
       setSelectedProfesionalId(String(payload.userId || ''))
       setForms((prev) => ({
         ...prev,
@@ -170,8 +189,16 @@ export default function App() {
     e.preventDefault()
     await withFeedback(async () => {
       const payload = await authApi.loginPaciente(auth)
-      setCurrentUser({ id: payload.userId, email: payload.username, displayName: payload.displayName, role: payload.role })
-      setActiveScreen('portal-paciente')
+      const loggedUser = { id: payload.userId, email: payload.username, displayName: payload.displayName, role: payload.role }
+      setCurrentUser(loggedUser)
+      if (isPacienteRole(loggedUser.role)) {
+        setActiveScreen('portal-paciente')
+        return payload
+      }
+
+      setSelectedProfesionalId(String(payload.userId || ''))
+      await loadProfesionales()
+      setActiveScreen('dashboard')
       return payload
     }, 'Login paciente correcto')
   }
@@ -407,6 +434,10 @@ export default function App() {
   )
 
   function renderScreen() {
+    if (currentUser && isPacienteRole(currentUser.role) && activeScreen !== 'portal-paciente') {
+      return <PortalPacienteScreen currentUser={currentUser} hasToken={hasToken} onRefreshMe={loadMe} />
+    }
+
     switch (activeScreen) {
       case 'login-profesional':
         return (
