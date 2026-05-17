@@ -28,8 +28,6 @@ export function PacientesScreen({
       <div className="screen-head">
         <h3>Pacientes</h3>
         <div className="inline-controls">
-          <button className="ghost" onClick={onGoDashboard}>Dashboard</button>
-          <button className="ghost" onClick={onGoAgenda}>Agenda</button>
           <button className="primary" onClick={() => setShowForm((v) => !v)}>
             {showForm ? 'Cancelar' : 'Crear paciente'}
           </button>

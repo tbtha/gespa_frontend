@@ -1,54 +1,40 @@
 import { useState } from 'react'
-import { TIPO_INDICADOR } from '../../constants/ui'
+import { toEstadoCitaLabel } from '../../constants/ui'
 
 const TABS = [
   { id: 'datos', label: 'Datos generales' },
   { id: 'antecedentes', label: 'Antecedentes' },
   { id: 'notas', label: 'Notas clínicas' },
-  { id: 'evolucion', label: 'Evolución' },
 ]
-
-const INDICADOR_LABEL = {
-  PESO: 'Peso',
-  PRESION_SISTOLICA: 'Presión sistólica',
-  GLICEMIA: 'Glicemia',
-  OTRO: 'Otro',
-}
-
-const INDICADOR_UNIDAD_SUGERIDA = {
-  PESO: 'kg',
-  PRESION_SISTOLICA: 'mmHg',
-  GLICEMIA: 'mg/dL',
-  OTRO: '',
-}
 
 export function FichaScreen({
   selectedPacienteId,
   pacienteActual,
   forms,
   notas,
+  citasPaciente,
   antecedentes,
-  evolucion,
-  serieEvolucion,
   onSetForm,
   onReloadFicha,
   onSavePacienteGeneral,
   onSaveAntecedentes,
   onCreateNota,
-  onSaveEvolucion,
-  onLoadSerieEvolucion,
   onGoPacientes,
   onGoAgenda,
 }) {
   const [activeTab, setActiveTab] = useState('datos')
+  const citasDisponiblesParaNota = (citasPaciente || []).filter((c) => !['CANCELLED', 'NO_SHOW'].includes(c.status))
 
   return (
     <section className="screen active">
       <div className="screen-head">
-        <h3>Ficha del paciente</h3>
+        <div>
+          <h3>Ficha del paciente</h3>
+          {pacienteActual?.displayName && <p className="meta">Paciente actual: {pacienteActual.displayName}</p>}
+        </div>
         <div className="inline-controls">
-          <button className="ghost" onClick={onGoPacientes}>Pacientes</button>
-          <button className="ghost" onClick={onGoAgenda}>Agenda</button>
+          <button className="ghost" onClick={onGoAgenda}>Volver a agenda</button>
+          <button className="ghost" onClick={onGoPacientes}>Ver listado</button>
           <button className="ghost" onClick={onReloadFicha}>Recargar</button>
         </div>
       </div>
@@ -181,13 +167,25 @@ export function FichaScreen({
         <div className="card">
           <h4>Nueva nota clínica</h4>
           <form className="form-grid" onSubmit={onCreateNota}>
-            <label>ID de la cita<input type="number" value={forms.notaCreate.appointmentId} onChange={(e) => onSetForm('notaCreate.appointmentId', e.target.value)} required /></label>
-            <label>Tipo de nota
-              <select value={forms.notaCreate.noteType} onChange={(e) => onSetForm('notaCreate.noteType', e.target.value)}>
-                <option value="CONTROL">Control</option>
-                <option value="PRIMERA_CONSULTA">Primera consulta</option>
-                <option value="URGENCIA">Urgencia</option>
-                <option value="SEGUIMIENTO">Seguimiento</option>
+            <label>Hora agendada
+              <select
+                value={forms.notaCreate.appointmentId}
+                onChange={(e) => {
+                  const appointmentId = e.target.value
+                  onSetForm('notaCreate.appointmentId', appointmentId)
+                  const citaSeleccionada = citasDisponiblesParaNota.find((c) => String(c.id) === String(appointmentId))
+                  if (citaSeleccionada?.tipoAtencion) {
+                    onSetForm('notaCreate.noteType', citaSeleccionada.tipoAtencion)
+                  }
+                }}
+                required
+              >
+                <option value="">Selecciona una cita</option>
+                {citasDisponiblesParaNota.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {new Date(c.startsAt).toLocaleString('es-CL')} · {toEstadoCitaLabel(c.status)} · {c.tipoAtencion}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="full">Contenido
@@ -196,6 +194,7 @@ export function FichaScreen({
             <label className="full">Indicaciones
               <textarea value={forms.notaCreate.indicaciones} onChange={(e) => onSetForm('notaCreate.indicaciones', e.target.value)} />
             </label>
+            {citasDisponiblesParaNota.length === 0 ? <p className="meta full">No hay horas agendadas disponibles para vincular esta nota.</p> : null}
             <button className="primary full" type="submit" disabled={!selectedPacienteId}>Guardar nota</button>
           </form>
 
@@ -204,7 +203,7 @@ export function FichaScreen({
               <h4 style={{marginTop: '1.5rem'}}>Notas anteriores</h4>
               {notas.map((n) => (
                 <div key={n.id} className="note-item">
-                  <strong>{n.noteType} · {new Date(n.createdAt || Date.now()).toLocaleDateString('es-CL')}</strong>
+                  <strong>{new Date(n.createdAt || Date.now()).toLocaleDateString('es-CL')}</strong>
                   <p>{n.content}</p>
                   {n.indicaciones && <p className="meta">Indicaciones: {n.indicaciones}</p>}
                 </div>
@@ -214,60 +213,6 @@ export function FichaScreen({
         </div>
       )}
 
-      {activeTab === 'evolucion' && (
-        <div className="card">
-          <h4>Seguimiento de evolución</h4>
-          <p className="meta">Registra mediciones clínicas para ver la evolución del paciente en el tiempo.</p>
-          <form className="form-grid" onSubmit={onSaveEvolucion}>
-            <label>Tipo de medición
-              <select
-                value={forms.evolucionCreate.tipoIndicador}
-                onChange={(e) => {
-                  const tipo = e.target.value
-                  onSetForm('evolucionCreate.tipoIndicador', tipo)
-                  onSetForm('evolucionCreate.unidad', INDICADOR_UNIDAD_SUGERIDA[tipo] || '')
-                }}
-              >
-                {TIPO_INDICADOR.map((it) => <option key={it} value={it}>{INDICADOR_LABEL[it] || it}</option>)}
-              </select>
-            </label>
-            <label>Resultado
-              <input value={forms.evolucionCreate.valor} onChange={(e) => onSetForm('evolucionCreate.valor', e.target.value)} required />
-            </label>
-            <label>Unidad
-              <input value={forms.evolucionCreate.unidad} onChange={(e) => onSetForm('evolucionCreate.unidad', e.target.value)} placeholder="Ej: kg, mmHg, mg/dL" />
-            </label>
-            <label>Fecha de registro
-              <input type="date" value={forms.evolucionCreate.fechaRegistro} onChange={(e) => onSetForm('evolucionCreate.fechaRegistro', e.target.value)} required />
-            </label>
-            <button className="primary full" type="submit" disabled={!selectedPacienteId}>Guardar medición</button>
-          </form>
-
-          {evolucion.length > 0 && (
-            <>
-              <h4 style={{marginTop: '1.5rem'}}>Historial de mediciones</h4>
-              <ul className="evolucion-list">
-                {evolucion.map((r) => (
-                  <li key={r.id}>{new Date(r.fechaRegistro).toLocaleDateString('es-CL')} · <strong>{INDICADOR_LABEL[r.tipoIndicador] || r.tipoIndicador}</strong> · {r.valor} {r.unidad}</li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          <div style={{marginTop: '1.5rem'}}>
-            <h4>Filtrar evolución (opcional)</h4>
-            <div className="inline-controls">
-              <select value={forms.evolucionSerie.tipo} onChange={(e) => onSetForm('evolucionSerie.tipo', e.target.value)}>
-                {TIPO_INDICADOR.map((it) => <option key={it} value={it}>{INDICADOR_LABEL[it] || it}</option>)}
-              </select>
-              <input type="date" value={forms.evolucionSerie.desde} onChange={(e) => onSetForm('evolucionSerie.desde', e.target.value)} />
-              <input type="date" value={forms.evolucionSerie.hasta} onChange={(e) => onSetForm('evolucionSerie.hasta', e.target.value)} />
-              <button className="ghost" type="button" onClick={onLoadSerieEvolucion}>Aplicar filtro</button>
-            </div>
-            {serieEvolucion.length > 0 && <p className="meta">Se encontraron {serieEvolucion.length} registros.</p>}
-          </div>
-        </div>
-      )}
     </section>
   )
 }

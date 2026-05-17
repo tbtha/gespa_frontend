@@ -14,7 +14,18 @@ export const authApi = {
     await apiClient.post('/api/auth/logout', { refreshToken })
     clearAuth()
   },
+  requestPasswordReset: (payload) => apiClient.post('/api/auth/password-reset/request', payload),
+  confirmPasswordReset: (payload) => apiClient.post('/api/auth/password-reset/confirm', payload),
+  acceptProfessionalInvitation: (payload) => apiClient.post('/api/auth/invitations/accept', payload),
+  registerPatient: (payload) => apiClient.post('/api/auth/register/patient', payload),
   me: () => apiClient.get('/api/auth/me'),
+}
+
+export const adminApi = {
+  createProfessionalInvitation: (payload) => apiClient.post('/api/admin/professionals/invitations', payload),
+  listUsers: () => apiClient.get('/api/admin/users'),
+  updateUserStatus: (userId, active) => apiClient.patch(`/api/admin/users/${userId}/status`, { active }),
+  resetPassword: (userId) => apiClient.post(`/api/admin/users/${userId}/reset-password`, {}),
 }
 
 export const healthApi = {
@@ -35,6 +46,7 @@ export const dashboardApi = {
 
 export const pacienteApi = {
   create: (payload) => apiClient.post('/api/pacientes', payload),
+  createInvitation: (payload) => apiClient.post('/api/pacientes/invitations', payload),
   list: (params = {}) => {
     const qp = new URLSearchParams()
     Object.entries(params).forEach(([k, v]) => {
@@ -54,6 +66,7 @@ export const citaApi = {
     if (hasta) qp.append('hasta', hasta)
     return apiClient.get(`/api/citas?${qp.toString()}`)
   },
+  listByPaciente: (pacienteId) => apiClient.get(`/api/citas/paciente/${pacienteId}`),
   update: (id, payload) => apiClient.put(`/api/citas/${id}`, payload),
   updateEstado: (id, status) => apiClient.patch(`/api/citas/${id}/estado`, { status }),
 }
@@ -69,18 +82,4 @@ export const notaApi = {
 export const antecedentesApi = {
   getByPaciente: (pacienteId) => apiClient.get(`/api/pacientes/${pacienteId}/antecedentes`),
   upsert: (pacienteId, payload) => apiClient.put(`/api/pacientes/${pacienteId}/antecedentes`, payload),
-}
-
-export const evolucionApi = {
-  create: (pacienteId, payload) => apiClient.post(`/api/pacientes/${pacienteId}/evolucion`, payload),
-  listByPaciente: (pacienteId) => apiClient.get(`/api/pacientes/${pacienteId}/evolucion`),
-  resumen: (pacienteId) => apiClient.get(`/api/pacientes/${pacienteId}/evolucion/resumen`),
-  serie: (pacienteId, { tipo, desde, hasta }) => {
-    const qp = new URLSearchParams({ tipo })
-    if (desde) qp.append('desde', desde)
-    if (hasta) qp.append('hasta', hasta)
-    return apiClient.get(`/api/pacientes/${pacienteId}/evolucion/serie?${qp.toString()}`)
-  },
-  byCita: (citaId) => apiClient.get(`/api/citas/${citaId}/evolucion`),
-  delete: (id) => apiClient.delete(`/api/evolucion/${id}`),
 }
