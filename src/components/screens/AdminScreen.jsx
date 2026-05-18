@@ -51,13 +51,6 @@ export function AdminScreen({
               onChange={(e) => onSetInviteForm('specialty', e.target.value)}
             />
           </label>
-          <label>
-            Registro
-            <input
-              value={inviteForm.licenseNumber}
-              onChange={(e) => onSetInviteForm('licenseNumber', e.target.value)}
-            />
-          </label>
           <button className="primary full" type="submit">Crear invitación</button>
         </form>
       </div>

@@ -1,15 +1,23 @@
-import { apiClient, clearAuth, setAuth } from './client'
+import { apiClient, clearAuth, getAuth, setAuth } from './client'
 
 export const authApi = {
   async login(payload) {
-    const data = await apiClient.post('/api/auth/login', payload)
+    const data = await apiClient.post('/api/auth/login/professional', payload)
     setAuth({ accessToken: data.accessToken, refreshToken: data.refreshToken })
     return data
   },
   async loginPaciente(payload) {
-    return this.login(payload)
+    const data = await apiClient.post('/api/auth/login/patient', payload)
+    setAuth({ accessToken: data.accessToken, refreshToken: data.refreshToken })
+    return data
   },
   refresh: (refreshToken) => apiClient.post('/api/auth/refresh', { refreshToken }),
+  async switchRole(role) {
+    const { refreshToken } = getAuth()
+    const data = await apiClient.post('/api/auth/switch-role', { refreshToken, role })
+    setAuth({ accessToken: data.accessToken, refreshToken: data.refreshToken })
+    return data
+  },
   async logout(refreshToken) {
     await apiClient.post('/api/auth/logout', { refreshToken })
     clearAuth()
@@ -18,6 +26,7 @@ export const authApi = {
   confirmPasswordReset: (payload) => apiClient.post('/api/auth/password-reset/confirm', payload),
   acceptProfessionalInvitation: (payload) => apiClient.post('/api/auth/invitations/accept', payload),
   registerPatient: (payload) => apiClient.post('/api/auth/register/patient', payload),
+  checkEmail: (email) => apiClient.post('/api/auth/check-email', { email }),
   me: () => apiClient.get('/api/auth/me'),
 }
 

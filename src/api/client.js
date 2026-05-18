@@ -19,11 +19,28 @@ export function clearAuth() {
   localStorage.removeItem(REFRESH_KEY)
 }
 
+function notifyAuthExpired() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('gespa:auth-expired'))
+  }
+}
+
 async function request(path, options = {}, retry = true) {
   const { accessToken, refreshToken } = getAuth()
+  const hasBody = options.body !== undefined && options.body !== null
+  const isBodyString = typeof options.body === 'string'
+  const isBodyFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
+  const isBodyBlob = typeof Blob !== 'undefined' && options.body instanceof Blob
+  const requestBody = hasBody && !isBodyString && !isBodyFormData && !isBodyBlob
+    ? JSON.stringify(options.body)
+    : options.body
   const headers = {
-    'Content-Type': 'application/json',
+    Accept: 'application/json',
     ...(options.headers || {}),
+  }
+
+  if (hasBody && !headers['Content-Type'] && !headers['content-type']) {
+    headers['Content-Type'] = 'application/json'
   }
 
   if (accessToken && !headers.Authorization) {
@@ -33,6 +50,7 @@ async function request(path, options = {}, retry = true) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,
+    body: requestBody,
   })
 
   if (response.status === 401 && retry && refreshToken && !path.startsWith('/api/auth/')) {
@@ -49,6 +67,10 @@ async function request(path, options = {}, retry = true) {
     }
 
     clearAuth()
+    notifyAuthExpired()
+  } else if (response.status === 401 && !path.startsWith('/api/auth/')) {
+    clearAuth()
+    notifyAuthExpired()
   }
 
   if (response.status === 204) return null
@@ -67,8 +89,8 @@ async function request(path, options = {}, retry = true) {
 
 export const apiClient = {
   get: (path) => request(path),
-  post: (path, body) => request(path, { method: 'POST', body: JSON.stringify(body) }),
-  put: (path, body) => request(path, { method: 'PUT', body: JSON.stringify(body) }),
-  patch: (path, body) => request(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  post: (path, body) => request(path, { method: 'POST', body }),
+  put: (path, body) => request(path, { method: 'PUT', body }),
+  patch: (path, body) => request(path, { method: 'PATCH', body }),
   delete: (path) => request(path, { method: 'DELETE' }),
 }
