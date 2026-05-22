@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { ESTADOS_CITA, MODALIDAD, TIPO_ATENCION, toEstadoCitaLabel } from '../../constants/ui'
+import { useEffect, useMemo, useState } from 'react'
+import { ESTADOS_CITA, MODALIDAD, toEstadoCitaLabel, ESTADO_CITA_LABEL, MODALIDAD_LABEL } from '../../constants/ui'
 
 const WEEK_DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const STATUS_FILTERS = [
@@ -24,6 +24,43 @@ function getStatusClass(status) {
   }[status] || 'status-default'
 }
 
+function extractOffset(isoValue) {
+  const source = String(isoValue || '')
+  if (source.endsWith('Z')) return '+00:00'
+  const match = source.match(/([+-]\d{2}:\d{2})$/)
+  return match?.[1] || '-03:00'
+}
+
+function formatDateLocal(dateObj) {
+  const y = dateObj.getFullYear()
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0')
+  const d = String(dateObj.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function buildIsoDateTime(dateYmd, timeHm, offset) {
+  const safeDate = /^\d{4}-\d{2}-\d{2}$/.test(String(dateYmd || '')) ? dateYmd : formatDateLocal(new Date())
+  const safeTime = /^\d{2}:\d{2}$/.test(String(timeHm || '')) ? timeHm : '10:00'
+  const safeOffset = offset || '-03:00'
+  return `${safeDate}T${safeTime}:00${safeOffset}`
+}
+
+function parseDateAndTime(isoValue) {
+  const raw = String(isoValue || '')
+  const date = raw.slice(0, 10)
+  const time = raw.slice(11, 16)
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date) && /^\d{2}:\d{2}$/.test(time)) {
+    return { date, time }
+  }
+
+  const now = new Date()
+  return {
+    date: formatDateLocal(now),
+    time: '10:00',
+  }
+}
+
 export function AgendaScreen({
   forms,
   onSetForm,
@@ -40,7 +77,52 @@ export function AgendaScreen({
   onCreateCita,
   onUpdateEstadoCita,
   onGoFicha,
+  catalogs = {},
 }) {
+  const tiposAtencion = Array.isArray(catalogs.tiposAtencion) ? catalogs.tiposAtencion : []
+  const modalidades = catalogs.modalidades?.length ? catalogs.modalidades : MODALIDAD.map((v) => ({ value: v, label: MODALIDAD_LABEL[v] || v }))
+  const estadosCita = catalogs.estadosCita?.length ? catalogs.estadosCita : ESTADOS_CITA.map((v) => ({ value: v, label: ESTADO_CITA_LABEL[v] || v }))
+
+  const startParts = useMemo(() => parseDateAndTime(forms.citaCreate.startsAt), [forms.citaCreate.startsAt])
+  const endParts = useMemo(() => parseDateAndTime(forms.citaCreate.endsAt), [forms.citaCreate.endsAt])
+  const [citaFechaInicio, setCitaFechaInicio] = useState(startParts.date)
+  const [citaHoraInicio, setCitaHoraInicio] = useState(startParts.time)
+  const [citaFechaFin, setCitaFechaFin] = useState(endParts.date)
+  const [citaHoraFin, setCitaHoraFin] = useState(endParts.time)
+  const [citaOffset, setCitaOffset] = useState(extractOffset(forms.citaCreate.startsAt))
+
+  useEffect(() => {
+    setCitaFechaInicio(startParts.date)
+    setCitaHoraInicio(startParts.time)
+    setCitaFechaFin(endParts.date)
+    setCitaHoraFin(endParts.time)
+    setCitaOffset(extractOffset(forms.citaCreate.startsAt))
+  }, [startParts.date, startParts.time, endParts.date, endParts.time, forms.citaCreate.startsAt])
+
+  useEffect(() => {
+    if (!citaFechaInicio || !citaHoraInicio || !citaFechaFin || !citaHoraFin) return
+
+    const startsAt = buildIsoDateTime(citaFechaInicio, citaHoraInicio, citaOffset)
+    const endsAt = buildIsoDateTime(citaFechaFin, citaHoraFin, citaOffset)
+
+    if (forms.citaCreate.startsAt !== startsAt) {
+      onSetForm('citaCreate.startsAt', startsAt)
+    }
+    if (forms.citaCreate.endsAt !== endsAt) {
+      onSetForm('citaCreate.endsAt', endsAt)
+    }
+  }, [citaFechaInicio, citaHoraInicio, citaFechaFin, citaHoraFin, citaOffset, forms.citaCreate.startsAt, forms.citaCreate.endsAt, onSetForm])
+
+  const citaDuracion = useMemo(() => {
+    const startMs = new Date(forms.citaCreate.startsAt).getTime()
+    const endMs = new Date(forms.citaCreate.endsAt).getTime()
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null
+    return Math.round((endMs - startMs) / 60000)
+  }, [forms.citaCreate.startsAt, forms.citaCreate.endsAt])
+
+  function toEstadoLabel(status) {
+    return estadosCita.find((e) => e.value === status)?.label || toEstadoCitaLabel(status)
+  }
   const [statusFilter, setStatusFilter] = useState('ALL')
 
   const matchesStatusFilter = (status) => {
@@ -153,7 +235,7 @@ export function AgendaScreen({
                       className={`cal-badge ${getStatusClass(cita.status)}`}
                       onClick={() => onGoFicha(cita.pacienteId, cita.pacienteNombre)}
                     >
-                      {new Date(cita.startsAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} · {cita.pacienteNombre || `#${cita.pacienteId}`} · {toEstadoCitaLabel(cita.status)}
+                      {new Date(cita.startsAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })} · {cita.pacienteNombre || `#${cita.pacienteId}`} · {toEstadoLabel(cita.status)}
                     </button>
                   ))}
                   {dayCitas.length > 3 ? <span className="cal-more">+{dayCitas.length - 3} más</span> : null}
@@ -191,20 +273,57 @@ export function AgendaScreen({
               </div>
             ) : null}
 
-            <label>Inicio ISO<input value={forms.citaCreate.startsAt} onChange={(e) => onSetForm('citaCreate.startsAt', e.target.value)} required /></label>
-            <label>Fin ISO<input value={forms.citaCreate.endsAt} onChange={(e) => onSetForm('citaCreate.endsAt', e.target.value)} required /></label>
+            <div
+              className="full agenda-range-grid"
+              style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}
+            >
+              <div className="agenda-range-block" style={{ border: '1px solid var(--border-color, #e5e7eb)', borderRadius: '10px', padding: '12px' }}>
+                <h5 style={{ marginTop: 0, marginBottom: '10px' }}>Inicio</h5>
+                <div className="agenda-range-fields" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <label>Fecha
+                    <input type="date" value={citaFechaInicio} onChange={(e) => setCitaFechaInicio(e.target.value)} required />
+                  </label>
+                  <label>Hora
+                    <input type="time" value={citaHoraInicio} onChange={(e) => setCitaHoraInicio(e.target.value)} required />
+                  </label>
+                </div>
+              </div>
+
+              <div className="agenda-range-block" style={{ border: '1px solid var(--border-color, #e5e7eb)', borderRadius: '10px', padding: '12px' }}>
+                <h5 style={{ marginTop: 0, marginBottom: '10px' }}>Fin</h5>
+                <div className="agenda-range-fields" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <label>Fecha
+                    <input type="date" value={citaFechaFin} onChange={(e) => setCitaFechaFin(e.target.value)} required />
+                  </label>
+                  <label>Hora
+                    <input type="time" value={citaHoraFin} onChange={(e) => setCitaHoraFin(e.target.value)} required />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <p className="meta full">
+              Duración: {Number.isFinite(citaDuracion) ? `${citaDuracion} min` : 'No definida'}
+            </p>
             <label>Tipo
               <select value={forms.citaCreate.tipoAtencion} onChange={(e) => onSetForm('citaCreate.tipoAtencion', e.target.value)}>
-                {TIPO_ATENCION.map((it) => <option key={it}>{it}</option>)}
+                {tiposAtencion.length > 0 ? (
+                  tiposAtencion.map((it) => <option key={it.value} value={it.value}>{it.label}</option>)
+                ) : (
+                  <option value="" disabled>Sin tipos de atención configurados</option>
+                )}
               </select>
             </label>
             <label>Modalidad
               <select value={forms.citaCreate.modalidad} onChange={(e) => onSetForm('citaCreate.modalidad', e.target.value)}>
-                {MODALIDAD.map((it) => <option key={it}>{it}</option>)}
+                {modalidades.map((it) => <option key={it.value} value={it.value}>{it.label}</option>)}
               </select>
             </label>
             <label className="full">Motivo<textarea value={forms.citaCreate.reason} onChange={(e) => onSetForm('citaCreate.reason', e.target.value)} /></label>
-            <button className="primary full" type="submit">Crear una cita</button>
+            {tiposAtencion.length === 0 ? (
+              <p className="meta full">No hay tipos de atención activos en el catálogo.</p>
+            ) : null}
+            <button className="primary full" type="submit" disabled={tiposAtencion.length === 0}>Crear una cita</button>
           </form>
         </div>
       ) : null}
@@ -228,11 +347,11 @@ export function AgendaScreen({
             <div className="appointment-item" key={c.id}>
               <div className="apt-time">{new Date(c.startsAt).toLocaleString('es-CL')}</div>
               <div className="apt-info">
-                <p><span className="apt-status-badge">{toEstadoCitaLabel(c.status)}</span> {c.pacienteNombre || `Paciente #${c.pacienteId}`} · {c.tipoAtencion} · {c.modalidad}</p>
+                <p><span className="apt-status-badge">{toEstadoLabel(c.status)}</span> {c.pacienteNombre || `Paciente #${c.pacienteId}`} · {tiposAtencion.find((t) => t.value === c.tipoAtencion)?.label || c.tipoAtencion} · {modalidades.find((m) => m.value === c.modalidad)?.label || c.modalidad}</p>
               </div>
               <div className="apt-actions">
                 <select className="apt-estado" value={c.status} onChange={(e) => onUpdateEstadoCita(c.id, e.target.value)}>
-                  {ESTADOS_CITA.map((st) => <option key={st} value={st}>{toEstadoCitaLabel(st)}</option>)}
+                  {estadosCita.map((st) => <option key={st.value} value={st.value}>{st.label}</option>)}
                 </select>
                 <button className="ghost apt-view-btn" onClick={() => onGoFicha(c.pacienteId, c.pacienteNombre)}>Ver ficha →</button>
               </div>

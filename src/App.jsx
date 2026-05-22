@@ -3,15 +3,18 @@ import {
   adminApi,
   antecedentesApi,
   authApi,
+  catalogApi,
   citaApi,
   dashboardApi,
   healthApi,
+  horariosApi,
   notaApi,
   pacienteApi,
   profesionalApi,
 } from './api/gespaApi'
 import { clearAuth, getAuth } from './api/client'
 import { Topbar } from './components/layout/Topbar'
+import { FooterBar } from './components/layout/FooterBar'
 import { WorkspaceNav } from './components/layout/WorkspaceNav'
 import { StatusMessage } from './components/layout/StatusMessage'
 import { LoginProfesionalScreen } from './components/screens/LoginProfesionalScreen'
@@ -26,23 +29,53 @@ import { AcceptInvitationScreen } from './components/screens/AcceptInvitationScr
 import { RegisterPacienteScreen } from './components/screens/RegisterPacienteScreen'
 import { AdminScreen } from './components/screens/AdminScreen'
 
-function toLocalYmd(date = new Date()) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+function toChileYmd(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  return formatter.format(date)
+}
+
+function toChileOffsetString(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Santiago',
+    timeZoneName: 'shortOffset',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+  const parts = formatter.formatToParts(date)
+  const tzPart = parts.find((part) => part.type === 'timeZoneName')?.value || 'GMT-03:00'
+  const normalized = tzPart.replace('GMT', '')
+
+  if (/^[+-]\d{2}:\d{2}$/.test(normalized)) {
+    return normalized
+  }
+
+  const parsed = normalized.match(/^([+-])(\d{1,2})$/)
+  if (!parsed) {
+    return '-03:00'
+  }
+
+  const sign = parsed[1]
+  const hh = String(Number(parsed[2])).padStart(2, '0')
+  return `${sign}${hh}:00`
 }
 
 function toOffsetString(date = new Date()) {
-  const totalMinutes = -date.getTimezoneOffset()
-  const sign = totalMinutes >= 0 ? '+' : '-'
-  const abs = Math.abs(totalMinutes)
+  const raw = toChileOffsetString(date)
+  const sign = raw.startsWith('-') ? '-' : '+'
+  const [h, m] = raw.replace(/[+-]/, '').split(':')
+  const abs = Number(h) * 60 + Number(m || '0')
   const hh = String(Math.floor(abs / 60)).padStart(2, '0')
   const mm = String(abs % 60).padStart(2, '0')
   return `${sign}${hh}:${mm}`
 }
 
-const todayDate = toLocalYmd(new Date())
+const todayDate = toChileYmd(new Date())
 
 function buildDayRange(dateYmd) {
   const [year, month, day] = String(dateYmd || '').split('-').map(Number)
@@ -61,8 +94,8 @@ function buildMonthRange(baseDate = new Date()) {
   const firstDay = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0)
 
-  const first = toLocalYmd(firstDay)
-  const last = toLocalYmd(lastDay)
+  const first = toChileYmd(firstDay)
+  const last = toChileYmd(lastDay)
   const firstOffset = toOffsetString(firstDay)
   const lastOffset = toOffsetString(lastDay)
 
@@ -136,14 +169,29 @@ export default function App() {
     password: '',
     confirmPassword: '',
   })
+  const [emailCheckResult, setEmailCheckResult] = useState(null)
 
   const [adminUsers, setAdminUsers] = useState([])
+  const [adminSpecialties, setAdminSpecialties] = useState([])
+  const [adminNewSpecialtyName, setAdminNewSpecialtyName] = useState('')
+  const [catalogs, setCatalogs] = useState({
+    tiposAtencion: [],
+    modalidades: [],
+    estadosCita: [],
+    previsiones: [],
+    estadosCiviles: [],
+  })
   const [adminInviteForm, setAdminInviteForm] = useState({
     email: '',
     displayName: '',
     rut: '',
-    specialty: 'MEDICO GENERAL',
-    licenseNumber: '',
+    specialty: '',
+  })
+  const [professionalSpecialties, setProfessionalSpecialties] = useState([])
+  const [adminPatientInviteForm, setAdminPatientInviteForm] = useState({
+    email: '',
+    displayName: '',
+    rut: '',
   })
 
   const [profesionales, setProfesionales] = useState([])
@@ -169,7 +217,6 @@ export default function App() {
   const [patientProfileRaw, setPatientProfileRaw] = useState(null)
   const [patientProfileForm, setPatientProfileForm] = useState({
     id: '',
-    professionalId: '',
     displayName: '',
     email: '',
     phone: '',
@@ -178,18 +225,22 @@ export default function App() {
   const [patientCitas, setPatientCitas] = useState([])
   const [patientAssignedProfessionalName, setPatientAssignedProfessionalName] = useState('')
 
+  const [horarios, setHorarios] = useState([])
+  const [slotsDisponibles, setSlotsDisponibles] = useState([])
+  const [slotsLoading, setSlotsLoading] = useState(false)
+
   const [forms, setForms] = useState({
     profesionalCreate: {
-      email: '', password: '', displayName: '', rut: '', specialty: 'MEDICO GENERAL', licenseNumber: '', phone: '', address: '', institucion: '', descripcion: '',
+      email: '', password: '', displayName: '', rut: '', specialty: 'Medicina General', phone: '', address: '', institucion: '', descripcion: '',
     },
     profesionalUpdate: {
-      id: '', displayName: '', rut: '', specialty: '', licenseNumber: '', phone: '', address: '', institucion: '', descripcion: '',
+      id: '', displayName: '', rut: '', specialty: '', phone: '', address: '', institucion: '', descripcion: '',
     },
     pacienteCreate: {
-      email: '', password: '', displayName: '', professionalId: '', rut: '', birthdate: '', gender: 'FEMENINO', prevision: 'FONASA', estadoCivil: 'SOLTERO', ocupacion: '', phone: '', address: '', emergencyContactName: '', emergencyContactPhone: '',
+      email: '', password: '', displayName: '', rut: '', birthdate: '', gender: 'FEMENINO', prevision: 'FONASA', estadoCivil: 'SOLTERO', ocupacion: '', phone: '', address: '', emergencyContactName: '', emergencyContactPhone: '',
     },
     pacienteUpdate: {
-      id: '', email: '', rut: '', professionalId: '', displayName: '', birthdate: '', gender: 'FEMENINO', prevision: 'FONASA', estadoCivil: 'SOLTERO', ocupacion: '', phone: '+569', address: '', emergencyContactName: '', emergencyContactPhone: '',
+      id: '', email: '', rut: '', displayName: '', birthdate: '', gender: 'FEMENINO', prevision: 'FONASA', estadoCivil: 'SOLTERO', ocupacion: '', phone: '+569', address: '', emergencyContactName: '', emergencyContactPhone: '',
     },
     notaCreate: {
       professionalId: '', appointmentId: '', noteType: 'CONTROL', content: '', indicaciones: '', plan: '', isPrivate: false,
@@ -202,8 +253,8 @@ export default function App() {
       pacienteEmail: '',
       pacienteDisplayName: '',
       profesionalId: '',
-      startsAt: `${todayDate}T10:00:00-04:00`,
-      endsAt: `${todayDate}T10:30:00-04:00`,
+      startsAt: `${todayDate}T10:00:00${toOffsetString(new Date())}`,
+      endsAt: `${todayDate}T10:30:00${toOffsetString(new Date())}`,
       tipoAtencion: 'CONTROL',
       modalidad: 'PRESENCIAL',
       reason: '',
@@ -221,6 +272,69 @@ export default function App() {
     document.body.setAttribute('data-theme', 'medico')
   }, [])
 
+  useEffect(() => {
+    function onAuthExpired() {
+      setCurrentUser(null)
+      setActiveScreen('login-profesional')
+      setStatusMsg('⚠️ Tu sesión expiró. Vuelve a iniciar sesión.')
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('gespa:auth-expired', onAuthExpired)
+      return () => window.removeEventListener('gespa:auth-expired', onAuthExpired)
+    }
+
+    return undefined
+  }, [])
+
+  function formatLoginError(error, expectedRole) {
+    const msg = String(error?.message || '')
+    if (expectedRole === 'PROFESSIONAL' && msg.toLowerCase().includes('no tiene perfil profesional')) {
+      return '❌ Esta cuenta no tiene perfil profesional. Ingresa por el login de paciente.'
+    }
+    if (expectedRole === 'PATIENT' && msg.toLowerCase().includes('no tiene perfil de paciente')) {
+      return '❌ Esta cuenta no tiene perfil de paciente. Ingresa por el login profesional.'
+    }
+    return `❌ ${msg || 'No se pudo iniciar sesión'}`
+  }
+
+  async function switchSessionRole(targetRole) {
+    try {
+      const payload = await authApi.switchRole(targetRole)
+      const switchedUser = {
+        id: payload.userId,
+        email: payload.username,
+        displayName: payload.displayName,
+        role: normalizeRole(payload.role),
+      }
+      setCurrentUser(switchedUser)
+
+      if (isPacienteRole(switchedUser.role)) {
+        setActiveScreen('portal-paciente')
+        await Promise.all([
+          loadPatientWorkspace({ silent: true, userId: switchedUser.id }),
+          loadCatalogs(),
+        ])
+      } else if (isProfessionalRole(switchedUser.role)) {
+        setSelectedProfesionalId(String(switchedUser.id || ''))
+        setForms((prev) => ({
+          ...prev,
+          notaCreate: { ...prev.notaCreate, professionalId: String(switchedUser.id || '') },
+          citaCreate: { ...prev.citaCreate, profesionalId: String(switchedUser.id || '') },
+        }))
+        setActiveScreen('dashboard')
+        await loadDashboardWorkspace()
+      } else if (isAdminRole(switchedUser.role)) {
+        setActiveScreen('admin')
+        await Promise.all([loadAdminUsers(), loadProfessionalSpecialties(), loadAdminSpecialties()])
+      }
+
+      setStatusMsg('✅ Rol de sesión actualizado')
+    } catch (error) {
+      setStatusMsg(`❌ ${error.message}`)
+    }
+  }
+
   async function initApp() {
     try {
       const h = await healthApi.check()
@@ -237,13 +351,16 @@ export default function App() {
 
         if (isPacienteRole(normalizedMe?.role)) {
           setActiveScreen('portal-paciente')
-          await loadPatientWorkspace({ silent: true, userId: normalizedMe.id })
+          await Promise.all([
+            loadPatientWorkspace({ silent: true, userId: normalizedMe.id }),
+            loadCatalogs(),
+          ])
           return
         }
 
         if (isAdminRole(normalizedMe?.role)) {
           setActiveScreen('admin')
-          await loadAdminUsers()
+          await Promise.all([loadAdminUsers(), loadProfessionalSpecialties(), loadAdminSpecialties()])
           return
         }
 
@@ -258,6 +375,7 @@ export default function App() {
           await Promise.all([
             dashboardApi.getByProfesional(normalizedMe.id).then((data) => setDashboard(normalizeDashboardPayload(data))).catch(() => {}),
             citaApi.listByProfesional({ profesionalId: normalizedMe.id, ...agendaRange }).then(setCitas).catch(() => {}),
+            loadCatalogs(),
           ])
         }
       } catch {
@@ -296,6 +414,68 @@ export default function App() {
     })
   }
 
+  async function loadCatalogs() {
+    try {
+      const [tiposAtencion, modalidades, estadosCita, previsiones, estadosCiviles] = await Promise.all([
+        catalogApi.getTiposAtencion().catch(() => []),
+        catalogApi.getModalidades().catch(() => []),
+        catalogApi.getEstadosCita().catch(() => []),
+        catalogApi.getPrevisiones().catch(() => []),
+        catalogApi.getEstadosCiviles().catch(() => []),
+      ])
+      setCatalogs({
+        tiposAtencion: Array.isArray(tiposAtencion) ? tiposAtencion : [],
+        modalidades: Array.isArray(modalidades) ? modalidades : [],
+        estadosCita: Array.isArray(estadosCita) ? estadosCita : [],
+        previsiones: Array.isArray(previsiones) ? previsiones : [],
+        estadosCiviles: Array.isArray(estadosCiviles) ? estadosCiviles : [],
+      })
+
+      const tipos = Array.isArray(tiposAtencion) ? tiposAtencion : []
+      const modalidadesList = Array.isArray(modalidades) ? modalidades : []
+      setForms((prev) => ({
+        ...prev,
+        citaCreate: {
+          ...prev.citaCreate,
+          tipoAtencion: tipos.some((t) => t.value === prev.citaCreate.tipoAtencion)
+            ? prev.citaCreate.tipoAtencion
+            : (tipos[0]?.value || prev.citaCreate.tipoAtencion || 'CONTROL'),
+          modalidad: modalidadesList.some((m) => m.value === prev.citaCreate.modalidad)
+            ? prev.citaCreate.modalidad
+            : (modalidadesList[0]?.value || prev.citaCreate.modalidad || 'PRESENCIAL'),
+        },
+      }))
+    } catch {
+      // silencioso: se usa fallback de ui.js
+    }
+  }
+
+  async function loadProfessionalSpecialties() {
+    try {
+      const options = await profesionalApi.listSpecialties()
+      const normalized = Array.isArray(options) ? options : []
+      setProfessionalSpecialties(normalized)
+      setAdminInviteForm((prev) => ({
+        ...prev,
+        specialty: prev.specialty && normalized.some((item) => item.name === prev.specialty)
+          ? prev.specialty
+          : (normalized[0]?.name || ''),
+      }))
+      return normalized
+    } catch {
+      setProfessionalSpecialties([])
+      return []
+    }
+  }
+
+  async function loadAdminSpecialties() {
+    return withFeedback(async () => {
+      const list = await adminApi.listSpecialties()
+      setAdminSpecialties(Array.isArray(list) ? list : [])
+      return list
+    })
+  }
+
   function setAdminInviteField(field, value) {
     setAdminInviteForm((prev) => ({ ...prev, [field]: value }))
   }
@@ -304,9 +484,62 @@ export default function App() {
     e.preventDefault()
     await withFeedback(async () => {
       const payload = await adminApi.createProfessionalInvitation({ ...adminInviteForm })
-      const tokenMsg = payload?.inviteToken ? ` Token de invitación: ${payload.inviteToken}` : ''
-      setStatusMsg(`✅ Invitación creada.${tokenMsg}`)
-      setAdminInviteForm((prev) => ({ ...prev, email: '', displayName: '', rut: '', licenseNumber: '' }))
+      if (payload?.inviteToken) {
+        setStatusMsg(`✅ Invitación creada. Token de invitación: ${payload.inviteToken}`)
+      } else {
+        setStatusMsg('✅ Perfil profesional creado para usuario existente (sin invitación nueva).')
+      }
+      setAdminInviteForm((prev) => ({
+        ...prev,
+        email: '',
+        displayName: '',
+        rut: '',
+        specialty: professionalSpecialties.some((item) => item.name === prev.specialty)
+          ? prev.specialty
+          : (professionalSpecialties[0]?.name || ''),
+      }))
+      await loadAdminUsers()
+      return payload
+    })
+  }
+
+  function setAdminNewSpecialty(value) {
+    setAdminNewSpecialtyName(value)
+  }
+
+  async function createAdminSpecialty(e) {
+    e.preventDefault()
+    await withFeedback(async () => {
+      const payload = await adminApi.createSpecialty({ name: adminNewSpecialtyName })
+      setAdminNewSpecialtyName('')
+      await Promise.all([loadProfessionalSpecialties(), loadAdminSpecialties()])
+      return payload
+    }, 'Especialidad creada')
+  }
+
+  async function toggleAdminSpecialty(specialty) {
+    await withFeedback(async () => {
+      const updated = await adminApi.updateSpecialtyStatus(specialty.id, !specialty.active)
+      setAdminSpecialties((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+      await loadProfessionalSpecialties()
+      return updated
+    }, specialty.active ? 'Especialidad desactivada' : 'Especialidad activada')
+  }
+
+  function setAdminPatientInviteField(field, value) {
+    setAdminPatientInviteForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  async function createPatientInvitationFromAdmin(e) {
+    e.preventDefault()
+    await withFeedback(async () => {
+      const payload = await adminApi.createPatientInvitation({ ...adminPatientInviteForm })
+      if (payload?.inviteToken) {
+        setStatusMsg(`✅ Paciente creado. Token de invitación: ${payload.inviteToken}`)
+      } else {
+        setStatusMsg('✅ Perfil de paciente creado para usuario existente (sin invitación nueva).')
+      }
+      setAdminPatientInviteForm({ email: '', displayName: '', rut: '' })
       await loadAdminUsers()
       return payload
     })
@@ -337,7 +570,6 @@ export default function App() {
         setSelectedProfesionalId(String(data[0].id))
         setForms((prev) => ({
           ...prev,
-          pacienteCreate: { ...prev.pacienteCreate, professionalId: String(data[0].id) },
           notaCreate: { ...prev.notaCreate, professionalId: String(data[0].id) },
           citaCreate: { ...prev.citaCreate, profesionalId: String(data[0].id) },
         }))
@@ -348,7 +580,7 @@ export default function App() {
 
   async function onLoginProfesional(e) {
     e.preventDefault()
-    await withFeedback(async () => {
+    try {
       const payload = await authApi.login(auth)
       const loggedUser = {
         id: payload.userId,
@@ -364,7 +596,7 @@ export default function App() {
 
       if (isAdminRole(loggedUser.role)) {
         setActiveScreen('admin')
-        await loadAdminUsers()
+        await Promise.all([loadAdminUsers(), loadProfessionalSpecialties(), loadAdminSpecialties()])
         return payload
       }
 
@@ -378,13 +610,15 @@ export default function App() {
         setActiveScreen('dashboard')
         await loadDashboardWorkspace()
       }
-      return payload
-    }, 'Login profesional correcto')
+      setStatusMsg('✅ Login profesional correcto')
+    } catch (error) {
+      setStatusMsg(formatLoginError(error, 'PROFESSIONAL'))
+    }
   }
 
   async function onLoginPaciente(e) {
     e.preventDefault()
-    await withFeedback(async () => {
+    try {
       const payload = await authApi.loginPaciente(auth)
       const loggedUser = {
         id: payload.userId,
@@ -395,13 +629,14 @@ export default function App() {
       setCurrentUser(loggedUser)
       if (isPacienteRole(loggedUser.role)) {
         setActiveScreen('portal-paciente')
+        await loadCatalogs()
         await loadPatientWorkspace({ silent: true, userId: loggedUser.id })
         return payload
       }
 
       if (isAdminRole(loggedUser.role)) {
         setActiveScreen('admin')
-        await loadAdminUsers()
+        await Promise.all([loadAdminUsers(), loadProfessionalSpecialties(), loadAdminSpecialties()])
         return payload
       }
 
@@ -415,9 +650,10 @@ export default function App() {
         setActiveScreen('dashboard')
         await loadDashboardWorkspace()
       }
-
-      return payload
-    }, 'Login paciente correcto')
+      setStatusMsg('✅ Login paciente correcto')
+    } catch (error) {
+      setStatusMsg(formatLoginError(error, 'PATIENT'))
+    }
   }
 
   async function onLogout() {
@@ -431,6 +667,63 @@ export default function App() {
     setCurrentUser(null)
     setActiveScreen('login-profesional')
     setStatusMsg('')
+
+    if (typeof window !== 'undefined') {
+      window.location.reload()
+    }
+  }
+
+  async function loadHorarios(profesionalId) {
+    try {
+      const data = await horariosApi.list(profesionalId || selectedProfesionalId)
+      setHorarios(data || [])
+    } catch (err) {
+      setStatusMsg(`❌ ${err.message}`)
+    }
+  }
+
+  async function createHorario(payload) {
+    await withFeedback(async () => {
+      await horariosApi.create(selectedProfesionalId, payload)
+      await loadHorarios()
+    }, 'Horario agregado')
+  }
+
+  async function deleteHorario(horarioId) {
+    await withFeedback(async () => {
+      await horariosApi.delete(selectedProfesionalId, horarioId)
+      await loadHorarios()
+    }, 'Horario eliminado')
+  }
+
+  async function fetchSlotsForDate(fecha) {
+    setSlotsLoading(true)
+    setSlotsDisponibles([])
+    try {
+      const data = await horariosApi.getAllSlots(fecha)
+      setSlotsDisponibles(data || [])
+    } catch (err) {
+      setStatusMsg(`❌ ${err.message}`)
+    } finally {
+      setSlotsLoading(false)
+    }
+  }
+
+  async function agendarDesdeSlot({ slot, motivo, tipoAtencion }) {
+    const patientId = Number(patientProfileForm.id || currentUser?.id)
+    if (!patientId || !slot) return
+    await withFeedback(async () => {
+      await citaApi.create({
+        pacienteId: patientId,
+        profesionalId: slot.profesionalId,
+        startsAt: slot.startsAt,
+        endsAt: slot.endsAt,
+        modalidad: slot.modalidad,
+        tipoAtencion: tipoAtencion || 'PRIMERA_CONSULTA',
+        reason: motivo || '',
+      })
+      await loadPatientWorkspace({ silent: true })
+    }, 'Cita agendada correctamente')
   }
 
   async function navigateProfessionalScreen(screenId) {
@@ -450,6 +743,7 @@ export default function App() {
 
     if (screenId === 'perfil-profesional' && currentUser?.id) {
       await loadProfesionalToEdit(currentUser.id).catch(() => {})
+      await loadHorarios(currentUser.id).catch(() => {})
       return
     }
 
@@ -486,7 +780,6 @@ export default function App() {
       setPatientProfileRaw(profile)
       setPatientProfileForm({
         id: String(profile.id || resolvedPatientId),
-        professionalId: String(profile.professionalId || ''),
         displayName: profile.displayName || '',
         email: profile.email || currentUser?.email || '',
         phone: profile.phone || '',
@@ -536,7 +829,6 @@ export default function App() {
     if (!patientId || !patientProfileRaw) return
 
     const payload = {
-      professionalId: Number(patientProfileRaw.professionalId),
       email: patientProfileForm.email,
       displayName: patientProfileForm.displayName,
       birthdate: patientProfileRaw.birthdate || null,
@@ -567,17 +859,13 @@ export default function App() {
 
     try {
       const data = await authApi.requestPasswordReset({ email })
-      const receivedToken = data?.resetToken || ''
-
       setPasswordReset((prev) => ({
         ...prev,
         email,
-        token: receivedToken || prev.token,
       }))
 
       const message = data?.message || 'Si el correo existe, se ha generado un token de recuperación'
-      const tokenHint = receivedToken ? ` Token temporal: ${receivedToken}` : ''
-      setStatusMsg(`✅ ${message}${tokenHint}`)
+      setStatusMsg(`✅ ${message}`)
       return data
     } catch (error) {
       setStatusMsg(`❌ ${error.message}`)
@@ -640,19 +928,31 @@ export default function App() {
 
   function setRegisterPacienteField(field, value) {
     setRegisterPacienteForm((prev) => ({ ...prev, [field]: value }))
+    
+    // Si es email, verificar disponibilidad
+    if (field === 'email' && value.trim()) {
+      authApi.checkEmail(value).then(result => {
+        setEmailCheckResult(result)
+      }).catch(() => {
+        setEmailCheckResult(null)
+      })
+    }
   }
 
   async function onRegisterPaciente(e) {
     e.preventDefault()
 
-    if (!registerPacienteForm.password || registerPacienteForm.password.length < 8) {
-      setStatusMsg('❌ La contraseña debe tener al menos 8 caracteres')
-      return
-    }
+    const isExistingUser = emailCheckResult?.exists || Boolean(currentUser?.email && registerPacienteForm.email === currentUser.email)
 
-    if (registerPacienteForm.password !== registerPacienteForm.confirmPassword) {
-      setStatusMsg('❌ Las contraseñas no coinciden')
-      return
+    if (!isExistingUser) {
+      if (!registerPacienteForm.password || registerPacienteForm.password.length < 8) {
+        setStatusMsg('❌ La contraseña debe tener al menos 8 caracteres')
+        return
+      }
+      if (registerPacienteForm.password !== registerPacienteForm.confirmPassword) {
+        setStatusMsg('❌ Las contraseñas no coinciden')
+        return
+      }
     }
 
     await withFeedback(async () => {
@@ -660,10 +960,11 @@ export default function App() {
         email: registerPacienteForm.email,
         displayName: registerPacienteForm.displayName,
         rut: registerPacienteForm.rut,
-        password: registerPacienteForm.password,
+        ...(isExistingUser ? {} : { password: registerPacienteForm.password }),
       })
       setAuthState((prev) => ({ ...prev, email: registerPacienteForm.email, password: '' }))
       setRegisterPacienteForm({ email: '', displayName: '', rut: '', password: '', confirmPassword: '' })
+      setEmailCheckResult(null)
       setActiveScreen('login-paciente')
       return payload
     }, 'Registro exitoso. Ahora puedes iniciar sesión')
@@ -686,6 +987,7 @@ export default function App() {
     await Promise.all([
       dashboardApi.getByProfesional(id).then((data) => setDashboard(normalizeDashboardPayload(data))).catch(() => {}),
       citaApi.listByProfesional({ profesionalId: id, ...dayRange }).then(setCitas).catch(() => {}),
+      loadCatalogs(),
     ])
   }
 
@@ -705,7 +1007,6 @@ export default function App() {
           displayName: p.displayName || '',
           rut: p.rut || '',
           specialty: p.specialty || '',
-          licenseNumber: p.licenseNumber || '',
           phone: p.phone || '',
           address: p.address || '',
           institucion: p.institucion || '',
@@ -729,7 +1030,6 @@ export default function App() {
     await withFeedback(() => pacienteApi.create({
       ...forms.pacienteCreate,
       password: tempPassword,
-      professionalId: Number(forms.pacienteCreate.professionalId || selectedProfesionalId || currentUser?.id),
     }), 'Paciente registrado')
     await searchPacientes()
   }
@@ -769,7 +1069,6 @@ export default function App() {
           id: String(p.id || id),
           email: p.email || '',
           rut: p.rut || '',
-          professionalId: String(p.professionalId || currentUser?.id || selectedProfesionalId || ''),
           displayName: p.displayName || '',
           birthdate: p.birthdate || '',
           gender: p.gender || 'FEMENINO',
@@ -791,10 +1090,7 @@ export default function App() {
     if (!selectedPacienteId) return setStatusMsg('❌ Selecciona paciente')
 
     const { id, email, rut, ...payload } = forms.pacienteUpdate
-    await withFeedback(() => pacienteApi.update(id || selectedPacienteId, {
-      ...payload,
-      professionalId: Number(payload.professionalId || currentUser?.id || selectedProfesionalId),
-    }), 'Datos generales actualizados')
+    await withFeedback(() => pacienteApi.update(id || selectedPacienteId, payload), 'Datos generales actualizados')
 
     await searchPacientes()
     await loadPacienteToEdit(id || selectedPacienteId)
@@ -1127,6 +1423,11 @@ export default function App() {
           onSavePatientProfile={savePatientProfile}
           onReloadPacienteData={() => loadPatientWorkspace({ silent: false })}
           onRefreshMe={loadMe}
+          slotsDisponibles={slotsDisponibles}
+          slotsLoading={slotsLoading}
+          tiposAtencionOptions={catalogs.tiposAtencion}
+          onFetchSlots={fetchSlotsForDate}
+          onAgendarDesdeSlot={agendarDesdeSlot}
         />
       )
     }
@@ -1135,8 +1436,17 @@ export default function App() {
       return (
         <AdminScreen
           inviteForm={adminInviteForm}
+          specialtyOptions={professionalSpecialties}
+          adminSpecialties={adminSpecialties}
+          adminNewSpecialtyName={adminNewSpecialtyName}
           onSetInviteForm={setAdminInviteField}
+          onSetAdminNewSpecialty={setAdminNewSpecialty}
+          onCreateAdminSpecialty={createAdminSpecialty}
+          onToggleAdminSpecialty={toggleAdminSpecialty}
           onCreateInvitation={createProfessionalInvitation}
+          patientInviteForm={adminPatientInviteForm}
+          onSetPatientInviteForm={setAdminPatientInviteField}
+          onCreatePatientInvitation={createPatientInvitationFromAdmin}
           users={adminUsers}
           onReloadUsers={loadAdminUsers}
           onToggleUser={toggleUserStatus}
@@ -1181,6 +1491,9 @@ export default function App() {
             forms={forms}
             onSetForm={setForm}
             onUpdateProfesional={updateProfesional}
+            horarios={horarios}
+            onCreateHorario={createHorario}
+            onDeleteHorario={deleteHorario}
           />
         )
       case 'pacientes':
@@ -1207,6 +1520,7 @@ export default function App() {
             notas={notas}
             citasPaciente={citasPaciente}
             antecedentes={antecedentes}
+            catalogs={catalogs}
             onSetForm={setForm}
             onReloadFicha={() => selectedPacienteId && Promise.all([loadPacienteToEdit(), loadNotas(), loadAntecedentes(), loadCitasPaciente()])}
             onSavePacienteGeneral={savePacienteGeneral}
@@ -1236,6 +1550,7 @@ export default function App() {
             onGoFicha={selectPaciente}
             onGoDashboard={() => setActiveScreen('dashboard')}
             onGoPacientes={() => setActiveScreen('pacientes')}
+            catalogs={catalogs}
           />
         )
       case 'login-paciente':
@@ -1250,7 +1565,17 @@ export default function App() {
             onSubmit={onLoginPaciente}
             onGoProfesional={() => setActiveScreen('login-profesional')}
             onGoAcceptInvitation={() => setActiveScreen('aceptar-invitacion')}
-            onGoRegisterPaciente={() => setActiveScreen('registro-paciente')}
+            onGoRegisterPaciente={() => {
+              if (currentUser?.email) {
+                setRegisterPacienteForm((prev) => ({
+                  ...prev,
+                  email: currentUser.email,
+                  displayName: prev.displayName || currentUser.displayName || '',
+                }))
+                setEmailCheckResult({ exists: true, hasPatientProfile: false, hasProfessionalProfile: true })
+              }
+              setActiveScreen('registro-paciente')
+            }}
           />
         )
       case 'aceptar-invitacion':
@@ -1262,21 +1587,33 @@ export default function App() {
             onGoLoginProfesional={() => setActiveScreen('login-profesional')}
           />
         )
-      case 'registro-paciente':
+      case 'registro-paciente': {
+        const isExistingUser = emailCheckResult?.exists || Boolean(currentUser?.email && registerPacienteForm.email === currentUser.email)
         return (
           <RegisterPacienteScreen
             registerForm={registerPacienteForm}
             onSetRegisterForm={setRegisterPacienteField}
             onSubmit={onRegisterPaciente}
             onGoLoginPaciente={() => setActiveScreen('login-paciente')}
+            isExistingUser={isExistingUser}
           />
         )
+      }
       case 'admin':
         return (
           <AdminScreen
             inviteForm={adminInviteForm}
+            specialtyOptions={professionalSpecialties}
+            adminSpecialties={adminSpecialties}
+            adminNewSpecialtyName={adminNewSpecialtyName}
             onSetInviteForm={setAdminInviteField}
+            onSetAdminNewSpecialty={setAdminNewSpecialty}
+            onCreateAdminSpecialty={createAdminSpecialty}
+            onToggleAdminSpecialty={toggleAdminSpecialty}
             onCreateInvitation={createProfessionalInvitation}
+            patientInviteForm={adminPatientInviteForm}
+            onSetPatientInviteForm={setAdminPatientInviteField}
+            onCreatePatientInvitation={createPatientInvitationFromAdmin}
             users={adminUsers}
             onReloadUsers={loadAdminUsers}
             onToggleUser={toggleUserStatus}
@@ -1299,6 +1636,11 @@ export default function App() {
             onSavePatientProfile={savePatientProfile}
             onReloadPacienteData={() => loadPatientWorkspace({ silent: false })}
             onRefreshMe={loadMe}
+            slotsDisponibles={slotsDisponibles}
+            slotsLoading={slotsLoading}
+            tiposAtencionOptions={catalogs.tiposAtencion}
+            onFetchSlots={fetchSlotsForDate}
+            onAgendarDesdeSlot={agendarDesdeSlot}
           />
         )
       default:
@@ -1320,7 +1662,12 @@ export default function App() {
 
   return (
     <div>
-      <Topbar currentUser={currentUser} onLogout={onLogout} />
+      <Topbar
+        currentUser={currentUser}
+        onLogout={onLogout}
+        onSwitchToPatient={() => switchSessionRole('PATIENT')}
+        onSwitchToProfessional={() => switchSessionRole('PROFESSIONAL')}
+      />
       {currentUser && (isProfessionalRole(currentUser.role) || isPacienteRole(currentUser.role)) ? (
         <div className="app-shell">
           <WorkspaceNav currentUser={currentUser} activeScreen={activeScreen} onNavigate={navigateProfessionalScreen} />
@@ -1332,6 +1679,8 @@ export default function App() {
           {renderScreen()}
         </main>
       </div>
+
+      <FooterBar />
     </div>
   )
 }

@@ -88,8 +88,6 @@ kill -9 <PID>
 - `/api/citas` (POST, GET por profesional/rango, PATCH estado)
 - `/api/pacientes/{id}/notas` (POST, GET)
 - `/api/pacientes/{id}/antecedentes` (GET, PUT)
-- `/api/pacientes/{id}/evolucion` (POST, GET)
-- `/api/pacientes/{id}/evolucion/serie` (GET)
 
 ## Verificación rápida
 
