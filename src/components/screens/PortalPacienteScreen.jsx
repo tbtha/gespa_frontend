@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { toEstadoCitaLabel, toModalidadLabel, toTipoAtencionLabel } from '../../constants/ui'
+import { useMemo, useState } from 'react'
+import { TIPO_ATENCION, TIPO_ATENCION_LABEL, toEstadoCitaLabel, toModalidadLabel, toTipoAtencionLabel } from '../../constants/ui'
 
 export function PortalPacienteScreen({
   currentUser,
@@ -12,6 +12,12 @@ export function PortalPacienteScreen({
   onSavePatientProfile,
   onReloadPacienteData,
   onRefreshMe,
+  // scheduling
+  slotsDisponibles,
+  slotsLoading,
+  tiposAtencionOptions,
+  onFetchSlots,
+  onAgendarDesdeSlot,
 }) {
   const now = new Date()
 
@@ -51,24 +57,154 @@ export function PortalPacienteScreen({
   }, [sortedCitas, now])
 
   const proximaAtencion = proximasCitas[0] || null
-  const ultimaAtencion = historialCitas[0] || null
+  const tipoAtencionItems = useMemo(() => {
+    if (Array.isArray(tiposAtencionOptions) && tiposAtencionOptions.length > 0) {
+      return tiposAtencionOptions
+    }
+
+    return TIPO_ATENCION.map((value) => ({ value, label: TIPO_ATENCION_LABEL[value] || value }))
+  }, [tiposAtencionOptions])
+
+  // --- Scheduling modal state ---
+  const [showAgendarModal, setShowAgendarModal] = useState(false)
+  const [agendarFecha, setAgendarFecha] = useState('')
+  const [agendarSlot, setAgendarSlot] = useState(null)
+  const [agendarTipoAtencion, setAgendarTipoAtencion] = useState('PRIMERA_CONSULTA')
+  const [agendarMotivo, setAgendarMotivo] = useState('')
+
+  function openAgendarModal() {
+    setShowAgendarModal(true)
+    setAgendarSlot(null)
+    setAgendarTipoAtencion(tipoAtencionItems[0]?.value || 'PRIMERA_CONSULTA')
+    setAgendarMotivo('')
+    const today = new Date().toISOString().slice(0, 10)
+    setAgendarFecha(today)
+    onFetchSlots(today)
+  }
+
+  function handleFechaChange(e) {
+    setAgendarFecha(e.target.value)
+    setAgendarSlot(null)
+    if (e.target.value) onFetchSlots(e.target.value)
+  }
+
+  function handleConfirmarSlot(e) {
+    e.preventDefault()
+    if (!agendarSlot) return
+    onAgendarDesdeSlot({
+      slot: agendarSlot,
+      motivo: agendarMotivo,
+      tipoAtencion: agendarTipoAtencion,
+    })
+    setShowAgendarModal(false)
+  }
 
   function renderInicio() {
     return (
       <>
         <div className="card">
-          <h4>Estado de atención</h4>
-          <p><strong>Próxima atención:</strong> {proximaAtencion ? new Date(proximaAtencion.startsAt).toLocaleString('es-CL') : 'Sin próxima atención'}</p>
-          <p><strong>Última atención:</strong> {ultimaAtencion ? new Date(ultimaAtencion.startsAt).toLocaleString('es-CL') : 'Sin atenciones previas'}</p>
-          <p><strong>Profesional asignado:</strong> {getProfesionalDisplay(proximaAtencion || ultimaAtencion)}</p>
+          <div className="card-header-row">
+            <h4>Próximas atenciones</h4>
+            <button className="primary sm" onClick={openAgendarModal}>+ Agendar atención</button>
+          </div>
+          {proximasCitas.length === 0 ? (
+            <p className="meta">No tienes próximas atenciones agendadas.</p>
+          ) : (
+            <div className="appointments-list">
+              {proximasCitas.slice(0, 3).map((c) => (
+                <div className="appointment-item" key={c.id}>
+                  <div className="apt-time">
+                    {new Date(c.startsAt).toLocaleDateString('es-CL')}<br />
+                    {new Date(c.startsAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  <div className="apt-info">
+                    <strong>{getProfesionalDisplay(c)}</strong>
+                    <p>
+                      <span className="apt-status-badge">{toEstadoCitaLabel(c.status)}</span>
+                      {toModalidadLabel(c.modalidad)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="card">
-          <h4>Preguntas frecuentes</h4>
-          <p><strong>¿Cuándo es mi próxima cita?</strong> {proximaAtencion ? new Date(proximaAtencion.startsAt).toLocaleString('es-CL') : 'No tienes una próxima cita agendada.'}</p>
-          <p><strong>¿Con quién?</strong> {getProfesionalDisplay(proximaAtencion || ultimaAtencion)}</p>
-          <p><strong>¿Tengo documentos disponibles?</strong> Próximamente podrás ver documentos clínicos autorizados en esta sección.</p>
-        </div>
+        {showAgendarModal && (
+          <div className="modal-overlay" onClick={() => setShowAgendarModal(false)}>
+            <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-head">
+                <h4>Agendar atención</h4>
+                <button className="ghost sm" onClick={() => setShowAgendarModal(false)}>✕</button>
+              </div>
+
+              <label>Selecciona una fecha
+                <input type="date" value={agendarFecha} min={new Date().toISOString().slice(0, 10)}
+                  onChange={handleFechaChange} />
+              </label>
+
+              {agendarFecha && (
+                <>
+                  <label>Tipo de atención
+                    <select
+                      value={agendarTipoAtencion}
+                      onChange={(e) => setAgendarTipoAtencion(e.target.value)}
+                      required
+                    >
+                      {tipoAtencionItems.map((it) => (
+                        <option key={it.value} value={it.value}>{it.label}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {slotsLoading ? (
+                    <p className="meta">Cargando horarios disponibles…</p>
+                  ) : slotsDisponibles.length === 0 ? (
+                    <p className="meta">No hay horarios disponibles para esta fecha.</p>
+                  ) : (
+                    <>
+                      <p className="meta-label">Horarios disponibles</p>
+                      <div className="slots-grid">
+                        {slotsDisponibles.map((s, i) => {
+                          const start = new Date(s.startsAt)
+                          const selected = agendarSlot === s
+                          return (
+                            <button
+                              key={i}
+                              className={`slot-btn ${selected ? 'selected' : ''}`}
+                              onClick={() => setAgendarSlot(s)}
+                              type="button"
+                            >
+                              <span className="slot-time">
+                                {start.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              <span className="slot-meta">
+                                {s.profesionalNombre} · {toModalidadLabel(s.modalidad)}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {agendarSlot && (
+                    <form onSubmit={handleConfirmarSlot} style={{ marginTop: '1rem' }}>
+                      <label>Motivo (opcional)
+                        <input value={agendarMotivo} onChange={(e) => setAgendarMotivo(e.target.value)}
+                          placeholder="Ej: Control de rutina" />
+                      </label>
+                      <div className="modal-footer">
+                        <button className="ghost" type="button" onClick={() => setShowAgendarModal(false)}>Cancelar</button>
+                        <button className="primary" type="submit">Confirmar hora</button>
+                      </div>
+                    </form>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </>
     )
   }

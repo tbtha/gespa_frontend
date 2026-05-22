@@ -32,7 +32,11 @@ export const authApi = {
 
 export const adminApi = {
   createProfessionalInvitation: (payload) => apiClient.post('/api/admin/professionals/invitations', payload),
+  createPatientInvitation: (payload) => apiClient.post('/api/admin/patients/invitations', payload),
   listUsers: () => apiClient.get('/api/admin/users'),
+  listSpecialties: () => apiClient.get('/api/admin/specialties'),
+  createSpecialty: (payload) => apiClient.post('/api/admin/specialties', payload),
+  updateSpecialtyStatus: (specialtyId, active) => apiClient.patch(`/api/admin/specialties/${specialtyId}/status`, { active }),
   updateUserStatus: (userId, active) => apiClient.patch(`/api/admin/users/${userId}/status`, { active }),
   resetPassword: (userId) => apiClient.post(`/api/admin/users/${userId}/reset-password`, {}),
 }
@@ -44,6 +48,7 @@ export const healthApi = {
 export const profesionalApi = {
   create: (payload) => apiClient.post('/api/profesionales', payload),
   list: () => apiClient.get('/api/profesionales'),
+  listSpecialties: () => apiClient.get('/api/profesionales/specialties'),
   get: (id) => apiClient.get(`/api/profesionales/${id}`),
   update: (id, payload) => apiClient.put(`/api/profesionales/${id}`, payload),
 }
@@ -91,4 +96,20 @@ export const notaApi = {
 export const antecedentesApi = {
   getByPaciente: (pacienteId) => apiClient.get(`/api/pacientes/${pacienteId}/antecedentes`),
   upsert: (pacienteId, payload) => apiClient.put(`/api/pacientes/${pacienteId}/antecedentes`, payload),
+}
+
+export const horariosApi = {
+  list: (profesionalId) => apiClient.get(`/api/profesionales/${profesionalId}/horarios`),
+  create: (profesionalId, payload) => apiClient.post(`/api/profesionales/${profesionalId}/horarios`, payload),
+  delete: (profesionalId, horarioId) => apiClient.delete(`/api/profesionales/${profesionalId}/horarios/${horarioId}`),
+  getSlots: (profesionalId, fecha) => apiClient.get(`/api/profesionales/${profesionalId}/slots?fecha=${fecha}`),
+  getAllSlots: (fecha) => apiClient.get(`/api/profesionales/slots?fecha=${fecha}`),
+}
+
+export const catalogApi = {
+  getTiposAtencion: () => apiClient.get('/api/catalogs/tipos-atencion'),
+  getModalidades: () => apiClient.get('/api/catalogs/modalidades'),
+  getEstadosCita: () => apiClient.get('/api/catalogs/estados-cita'),
+  getPrevisiones: () => apiClient.get('/api/catalogs/previsiones'),
+  getEstadosCiviles: () => apiClient.get('/api/catalogs/estados-civiles'),
 }

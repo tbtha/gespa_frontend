@@ -21,7 +21,20 @@ export function FichaScreen({
   onCreateNota,
   onGoPacientes,
   onGoAgenda,
+  catalogs = {},
 }) {
+  const previsionOptions = catalogs.previsiones?.length
+    ? catalogs.previsiones
+    : [{ value: 'FONASA', label: 'FONASA' }, { value: 'ISAPRE', label: 'ISAPRE' }, { value: 'PARTICULAR', label: 'Particular' }]
+  const estadoCivilOptions = catalogs.estadosCiviles?.length
+    ? catalogs.estadosCiviles
+    : [
+        { value: 'SOLTERO', label: 'Soltero/a' },
+        { value: 'CASADO', label: 'Casado/a' },
+        { value: 'CONVIVIENTE', label: 'Conviviente' },
+        { value: 'DIVORCIADO', label: 'Divorciado/a' },
+        { value: 'VIUDO', label: 'Viudo/a' },
+      ]
   const [activeTab, setActiveTab] = useState('datos')
   const citasDisponiblesParaNota = (citasPaciente || []).filter((c) => !['CANCELLED', 'NO_SHOW'].includes(c.status))
 
@@ -77,18 +90,12 @@ export function FichaScreen({
               </label>
               <label>Previsión
                 <select value={forms.pacienteUpdate.prevision || 'FONASA'} onChange={(e) => onSetForm('pacienteUpdate.prevision', e.target.value)}>
-                  <option value="FONASA">FONASA</option>
-                  <option value="ISAPRE">ISAPRE</option>
-                  <option value="PARTICULAR">Particular</option>
+                  {previsionOptions.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
                 </select>
               </label>
               <label>Estado civil
                 <select value={forms.pacienteUpdate.estadoCivil || 'SOLTERO'} onChange={(e) => onSetForm('pacienteUpdate.estadoCivil', e.target.value)}>
-                  <option value="SOLTERO">Soltero/a</option>
-                  <option value="CASADO">Casado/a</option>
-                  <option value="CONVIVIENTE">Conviviente</option>
-                  <option value="DIVORCIADO">Divorciado/a</option>
-                  <option value="VIUDO">Viudo/a</option>
+                  {estadoCivilOptions.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
                 </select>
               </label>
               <label>Ocupación
