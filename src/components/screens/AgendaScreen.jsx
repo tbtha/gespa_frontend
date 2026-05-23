@@ -198,18 +198,32 @@ export function AgendaScreen({
       </div>
 
       <div className="card">
-        <div className="month-header">
-          <button className="ghost" onClick={goPrevMonth}>← Mes anterior</button>
-          <h4 className="month-title">{monthLabel}</h4>
-          <button className="ghost" onClick={goNextMonth}>Mes siguiente →</button>
+        <div className="month-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 10 }}>
+          <button className="ghost" onClick={goPrevMonth} style={{ minWidth: 110 }}>
+            ← Mes anterior
+          </button>
+          <h4 className="month-title" style={{ margin: '0 12px', fontSize: '1.1rem', fontWeight: 700, flex: '0 0 auto', textAlign: 'center' }}>{monthLabel}</h4>
+          <button className="ghost" onClick={goNextMonth} style={{ minWidth: 110 }}>
+            Mes siguiente →
+          </button>
         </div>
 
-        <div className="calendar-legend">
-          <span className="legend-item"><i className="legend-dot status-scheduled" />Agendado</span>
-          <span className="legend-item"><i className="legend-dot status-confirmed" />Confirmado</span>
-          <span className="legend-item"><i className="legend-dot status-completed" />Completado</span>
-          <span className="legend-item"><i className="legend-dot status-cancelled" />Cancelado</span>
-          <span className="legend-item"><i className="legend-dot status-noshow" />No se presentó</span>
+        <div className="calendar-legend" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', margin: '16px 0 10px 0' }}>
+          <span className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="cal-badge status-scheduled" style={{ minWidth: 80, justifyContent: 'center' }}>Agendado</span>
+          </span>
+          <span className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="cal-badge status-confirmed" style={{ minWidth: 80, justifyContent: 'center' }}>Confirmado</span>
+          </span>
+          <span className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="cal-badge status-completed" style={{ minWidth: 80, justifyContent: 'center' }}>Completado</span>
+          </span>
+          <span className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="cal-badge status-cancelled" style={{ minWidth: 80, justifyContent: 'center' }}>Cancelado</span>
+          </span>
+          <span className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="cal-badge status-noshow" style={{ minWidth: 110, justifyContent: 'center' }}>No se presentó</span>
+          </span>
         </div>
 
         <div className="calendar-grid week-header">

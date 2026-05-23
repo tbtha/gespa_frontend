@@ -14,6 +14,7 @@ import {
 } from './api/gespaApi'
 import { clearAuth, getAuth } from './api/client'
 import { Topbar } from './components/layout/Topbar'
+import { HomeScreen } from './components/screens/HomeScreen'
 import { FooterBar } from './components/layout/FooterBar'
 import { WorkspaceNav } from './components/layout/WorkspaceNav'
 import { StatusMessage } from './components/layout/StatusMessage'
@@ -149,7 +150,7 @@ function normalizeRut(value) {
 }
 
 export default function App() {
-  const [activeScreen, setActiveScreen] = useState('login-profesional')
+  const [activeScreen, setActiveScreen] = useState('home')
   const [statusMsg, setStatusMsg] = useState('')
   const [health, setHealth] = useState('')
 
@@ -684,7 +685,13 @@ export default function App() {
 
   async function createHorario(payload) {
     await withFeedback(async () => {
-      await horariosApi.create(selectedProfesionalId, payload)
+      // Mapear 'lugar' a 'direccionAtencion' para el backend
+      const payloadBackend = {
+        ...payload,
+        direccionAtencion: payload.lugar || '',
+      }
+      delete payloadBackend.lugar
+      await horariosApi.create(selectedProfesionalId, payloadBackend)
       await loadHorarios()
     }, 'Horario agregado')
   }
@@ -721,6 +728,7 @@ export default function App() {
         modalidad: slot.modalidad,
         tipoAtencion: tipoAtencion || 'PRIMERA_CONSULTA',
         reason: motivo || '',
+        location: slot.lugar || slot.location || slot.place || '',
       })
       await loadPatientWorkspace({ silent: true })
     }, 'Cita agendada correctamente')
@@ -1410,6 +1418,9 @@ export default function App() {
   }, [citas])
 
   function renderScreen() {
+    if (!currentUser && activeScreen === 'home') {
+      return <HomeScreen onGoLogin={() => setActiveScreen('login-profesional')} />
+    }
     if (currentUser && isPacienteRole(currentUser.role) && !isPatientPortalScreen(activeScreen)) {
       return (
         <PortalPacienteScreen
@@ -1431,7 +1442,6 @@ export default function App() {
         />
       )
     }
-
     if (currentUser && isAdminRole(currentUser.role) && activeScreen !== 'admin') {
       return (
         <AdminScreen
@@ -1454,7 +1464,6 @@ export default function App() {
         />
       )
     }
-
     switch (activeScreen) {
       case 'login-profesional':
         return (

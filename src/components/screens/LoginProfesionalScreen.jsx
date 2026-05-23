@@ -24,7 +24,7 @@ export function LoginProfesionalScreen({
     <section className="screen active">
       <div className="card login-card">
         <h3>Ingreso profesional</h3>
-        <p>Acceso seguro para profesionales de salud.</p>
+        <p>Acceso para profesionales de salud.</p>
         <form onSubmit={onSubmit}>
           <label>Correo</label>
           <input type="email" value={auth.email} onChange={(e) => setAuthState((p) => ({ ...p, email: e.target.value }))} required />
@@ -35,6 +35,10 @@ export function LoginProfesionalScreen({
             ¿Olvidaste tu contraseña?
           </button>
         </form>
+        <div style={{ margin: '18px 0 0 0', color: 'var(--text-muted)', fontSize: '0.98rem', textAlign: 'center' }}>
+          ¿Quieres registrarte como profesional? <br />
+          Comunícate con <a href="mailto:admingespa@gmail.com" style={{ color: 'var(--primary)', fontWeight: 500 }}>admingespa@gmail.com</a>
+        </div>
 
         {showReset && (
           <div className="reset-panel">
