@@ -8,7 +8,6 @@ const PROFESSIONAL_SCREENS = [
 const PATIENT_SCREENS = [
   { id: 'portal-paciente', label: 'Inicio' },
   { id: 'paciente-citas', label: 'Mis citas' },
-  { id: 'paciente-documentos', label: 'Documentos' },
   { id: 'paciente-perfil', label: 'Mi perfil' },
 ]
 

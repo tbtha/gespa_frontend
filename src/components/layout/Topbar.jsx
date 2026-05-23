@@ -3,10 +3,22 @@ import gespaLogo from '../../assets/gespa-logo.png'
 export function Topbar({ currentUser, onLogout, onSwitchToPatient, onSwitchToProfessional }) {
   const role = String(currentUser?.role || '').toUpperCase()
 
+  // Navegación al home: si hay función de setActiveScreen, úsala
+  function goHome(e) {
+    e.preventDefault()
+    if (typeof window !== 'undefined' && window.setActiveScreen) {
+      window.setActiveScreen('home')
+    } else if (window.location) {
+      window.location.reload()
+    }
+  }
+
   return (
     <header className="topbar">
       <div className="logo-section">
-        <img src={gespaLogo} alt="GESPA Logo" className="logo-image" />
+        <a href="#" onClick={goHome} style={{ display: 'inline-block' }}>
+          <img src={gespaLogo} alt="GESPA Logo" className="logo-image" style={{ cursor: 'pointer' }} />
+        </a>
       </div>
       <div className="top-actions">
         {currentUser && role === 'PROFESSIONAL' && onSwitchToPatient ? (

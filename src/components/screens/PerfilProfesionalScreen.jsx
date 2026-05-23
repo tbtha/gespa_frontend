@@ -26,6 +26,7 @@ export function PerfilProfesionalScreen({
     horaFin: '13:00',
     duracionMinutos: 30,
     modalidad: 'PRESENCIAL',
+    lugar: '',
   })
 
   function setHorarioField(field, value) {
@@ -104,6 +105,11 @@ export function PerfilProfesionalScreen({
                   ))}
                 </select>
               </label>
+              {horarioForm.modalidad === 'PRESENCIAL' && (
+                <label>Lugar
+                  <input type="text" value={horarioForm.lugar} onChange={(e) => setHorarioField('lugar', e.target.value)} placeholder="Ej: Consulta 101, Clínica Central" required />
+                </label>
+              )}
               <button className="primary" type="submit" style={{ alignSelf: 'flex-end' }}>Agregar horario</button>
             </form>
           </div>
@@ -113,37 +119,28 @@ export function PerfilProfesionalScreen({
             {(!horarios || horarios.length === 0) ? (
               <p className="meta">Aún no has definido horarios de atención.</p>
             ) : (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Día</th>
-                    <th>Inicio</th>
-                    <th>Fin</th>
-                    <th>Duración</th>
-                    <th>Modalidad</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {horarios
-                    .slice()
-                    .sort((a, b) => a.diaSemana - b.diaSemana || a.horaInicio.localeCompare(b.horaInicio))
-                    .map((h) => (
-                      <tr key={h.id}>
-                        <td>{DIAS[h.diaSemana] || h.diaSemana}</td>
-                        <td>{h.horaInicio}</td>
-                        <td>{h.horaFin}</td>
-                        <td>{h.duracionMinutos} min</td>
-                        <td>{h.modalidad === 'PRESENCIAL' ? 'Presencial' : 'Online'}</td>
-                        <td>
-                          <button className="ghost sm danger" type="button" onClick={() => onDeleteHorario(h.id)}>
-                            Eliminar
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+              <div className="appointments-list">
+                {horarios
+                  .slice()
+                  .sort((a, b) => a.diaSemana - b.diaSemana || a.horaInicio.localeCompare(b.horaInicio))
+                  .map((h) => (
+                    <div className="appointment-item" key={h.id}>
+                      <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 16, alignItems: 'center', flex: '1 1 100%', minWidth: 0, width: '100%' }}>
+                        <div className="apt-time" style={{ whiteSpace: 'nowrap', fontSize: '1rem', fontWeight: 600 }}>{DIAS[h.diaSemana] || h.diaSemana} · {h.horaInicio} - {h.horaFin}</div>
+                        <span className="apt-status-badge" style={{ background: h.modalidad === 'PRESENCIAL' ? 'var(--primary-light)' : 'var(--info)', color: h.modalidad === 'PRESENCIAL' ? 'var(--primary-dark)' : 'white', marginLeft: 0, whiteSpace: 'nowrap' }}>{h.modalidad === 'PRESENCIAL' ? 'Presencial' : 'Online'}</span>
+                        <span style={{ fontWeight: 500, color: h.modalidad === 'PRESENCIAL' ? 'var(--primary)' : '#64748b', whiteSpace: 'nowrap' }}>
+                          {h.modalidad === 'PRESENCIAL' ? (h.direccionAtencion || <span style={{ color: '#e11d48' }}>Sin lugar</span>) : '—'}
+                        </span>
+                        <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>{h.duracionMinutos} min</span>
+                      </div>
+                      <div className="apt-actions">
+                        <button className="ghost sm danger" type="button" onClick={() => onDeleteHorario(h.id)}>
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
             )}
           </div>
         </>

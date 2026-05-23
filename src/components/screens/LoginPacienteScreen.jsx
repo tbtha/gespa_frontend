@@ -25,7 +25,7 @@ export function LoginPacienteScreen({
     <section className="screen active">
       <div className="card login-card">
         <h3>Ingreso paciente</h3>
-        <p>Acceso a datos autorizados de su ficha y próximas citas.</p>
+        <p>Acceso a su ficha y próximas citas.</p>
         <form onSubmit={onSubmit}>
           <label>Correo</label>
           <input type="email" value={auth.email} onChange={(e) => setAuthState((p) => ({ ...p, email: e.target.value }))} required />
