@@ -267,6 +267,10 @@ export default function App() {
 
   useEffect(() => {
     initApp()
+    // Si no hay usuario autenticado, cargar profesionales para la bienvenida
+    if (!getAuth().accessToken) {
+      loadProfesionales()
+    }
   }, [])
 
   useEffect(() => {
@@ -1419,7 +1423,9 @@ export default function App() {
 
   function renderScreen() {
     if (!currentUser && activeScreen === 'home') {
-      return <HomeScreen onGoLogin={() => setActiveScreen('login-profesional')} />
+      // Obtener especialidades únicas de los profesionales
+      const especialidades = Array.from(new Set((profesionales || []).map(p => p.specialty).filter(Boolean)));
+      return <HomeScreen onGoLogin={() => setActiveScreen('login-profesional')} especialidades={especialidades} />
     }
     if (currentUser && isPacienteRole(currentUser.role) && !isPatientPortalScreen(activeScreen)) {
       return (
