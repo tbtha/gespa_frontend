@@ -29,6 +29,7 @@ import { PortalPacienteScreen } from './components/screens/PortalPacienteScreen'
 import { AcceptInvitationScreen } from './components/screens/AcceptInvitationScreen'
 import { RegisterPacienteScreen } from './components/screens/RegisterPacienteScreen'
 import { AdminScreen } from './components/screens/AdminScreen'
+import { ResetPasswordScreen } from './components/screens/ResetPasswordScreen'
 
 function toChileYmd(date = new Date()) {
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -265,10 +266,34 @@ export default function App() {
 
   const hasToken = Boolean(getAuth().accessToken)
 
+  function bootstrapPasswordResetRoute() {
+    if (typeof window === 'undefined') return false
+
+    const path = String(window.location.pathname || '').toLowerCase()
+    const isResetPath = path === '/reset-password' || path.endsWith('/reset-password')
+    if (!isResetPath) return false
+
+    const params = new URLSearchParams(window.location.search || '')
+    const tokenFromUrl = String(params.get('token') || '').trim()
+    const emailFromUrl = String(params.get('email') || '').trim()
+
+    setPasswordReset((prev) => ({
+      ...prev,
+      email: emailFromUrl || prev.email || auth.email || '',
+      token: tokenFromUrl || prev.token || '',
+      newPassword: '',
+      confirmPassword: '',
+    }))
+    setActiveScreen('reset-password')
+    setStatusMsg('')
+    return true
+  }
+
   useEffect(() => {
+    const resetRouteDetected = bootstrapPasswordResetRoute()
     initApp()
     // Si no hay usuario autenticado, cargar profesionales para la bienvenida
-    if (!getAuth().accessToken) {
+    if (!getAuth().accessToken && !resetRouteDetected) {
       loadProfesionales()
     }
   }, [])
@@ -1471,6 +1496,16 @@ export default function App() {
       )
     }
     switch (activeScreen) {
+      case 'reset-password':
+        return (
+          <ResetPasswordScreen
+            passwordReset={passwordReset}
+            onSetPasswordResetField={setPasswordResetField}
+            onRequestPasswordReset={onRequestPasswordReset}
+            onConfirmPasswordReset={onConfirmPasswordReset}
+            onGoBack={() => setActiveScreen('login-profesional')}
+          />
+        )
       case 'login-profesional':
         return (
           <LoginProfesionalScreen
