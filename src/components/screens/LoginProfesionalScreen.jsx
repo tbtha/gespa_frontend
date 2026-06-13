@@ -92,7 +92,7 @@ export function LoginProfesionalScreen({
         {!showReset ? (
           <>
             <h3>Ingreso profesional</h3>
-            <p>Acceso para profesionales de salud.</p>
+            <p>Acceso a su perfil y próximas citas.</p>
             <form onSubmit={onSubmit}>
               <label>Correo</label>
               <input 
@@ -120,16 +120,16 @@ export function LoginProfesionalScreen({
             </form>
             <div style={{ margin: '18px 0 0 0', color: 'var(--text-muted)', fontSize: '0.98rem', textAlign: 'center' }}>
               ¿Quieres registrarte como profesional? <br />
-              Comunícate con <a href="mailto:admingespa@gmail.com" style={{ color: 'var(--primary)', fontWeight: 500 }}>admingespa@gmail.com</a>
+              Comunícate con <a href="mailto:contacto@gespa.cl" style={{ color: 'var(--primary)', fontWeight: 500 }}>contacto@gespa.cl</a>
             </div>
 
             <div className="login-switch">
-              <span>¿Eres paciente?</span>
-              <button className="ghost" type="button" onClick={onGoPaciente}>Ingresar como paciente</button>
-            </div>
-            <div className="login-switch">
               <span>¿Tienes invitación profesional?</span>
               <button className="ghost" type="button" onClick={onGoAcceptInvitation}>Activar cuenta</button>
+            </div>
+            <div className="login-switch">
+              <span>¿Eres paciente?</span>
+              <button className="ghost" type="button" onClick={onGoPaciente}>Ingresar como paciente</button>
             </div>
           </>
         ) : (

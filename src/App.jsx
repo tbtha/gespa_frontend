@@ -30,6 +30,7 @@ import { AcceptInvitationScreen } from './components/screens/AcceptInvitationScr
 import { RegisterPacienteScreen } from './components/screens/RegisterPacienteScreen'
 import { AdminScreen } from './components/screens/AdminScreen'
 import { ResetPasswordScreen } from './components/screens/ResetPasswordScreen'
+import { LoginRoleSelectorScreen } from './components/screens/LoginRoleSelectorScreen'
 
 function toChileYmd(date = new Date()) {
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -289,11 +290,33 @@ export default function App() {
     return true
   }
 
+  function bootstrapInvitationRoute() {
+    if (typeof window === 'undefined') return false
+
+    const path = String(window.location.pathname || '').toLowerCase()
+    const isInvitationPath = path === '/aceptar-invitacion' || path.endsWith('/aceptar-invitacion')
+    if (!isInvitationPath) return false
+
+    const params = new URLSearchParams(window.location.search || '')
+    const tokenFromUrl = String(params.get('token') || '').trim()
+
+    setInvitationForm((prev) => ({
+      ...prev,
+      token: tokenFromUrl || prev.token || '',
+      newPassword: '',
+      confirmPassword: '',
+    }))
+    setActiveScreen('aceptar-invitacion')
+    setStatusMsg('')
+    return true
+  }
+
   useEffect(() => {
     const resetRouteDetected = bootstrapPasswordResetRoute()
+    const invitationRouteDetected = bootstrapInvitationRoute()
     initApp()
     // Si no hay usuario autenticado, cargar profesionales para la bienvenida
-    if (!getAuth().accessToken && !resetRouteDetected) {
+    if (!getAuth().accessToken && !resetRouteDetected && !invitationRouteDetected) {
       loadProfesionales()
     }
   }, [])
@@ -979,7 +1002,16 @@ export default function App() {
   async function onRegisterPaciente(e) {
     e.preventDefault()
 
-    const isExistingUser = emailCheckResult?.exists || Boolean(currentUser?.email && registerPacienteForm.email === currentUser.email)
+    const normalizedFormEmail = String(registerPacienteForm.email || '').trim().toLowerCase()
+    const normalizedCurrentEmail = String(currentUser?.email || '').trim().toLowerCase()
+    const sameAsCurrentUser = Boolean(normalizedCurrentEmail && normalizedFormEmail === normalizedCurrentEmail)
+    const isExistingUser = emailCheckResult?.exists || sameAsCurrentUser
+    const hasPatientProfile = emailCheckResult?.hasPatientProfile || (sameAsCurrentUser && isPacienteRole(currentUser?.role))
+
+    if (hasPatientProfile) {
+      setStatusMsg('❌ Este correo ya tiene un perfil de paciente. Inicia sesión en el portal paciente.')
+      return
+    }
 
     if (!isExistingUser) {
       if (!registerPacienteForm.password || registerPacienteForm.password.length < 8) {
@@ -1450,7 +1482,7 @@ export default function App() {
     if (!currentUser && activeScreen === 'home') {
       // Obtener especialidades únicas de los profesionales
       const especialidades = Array.from(new Set((profesionales || []).map(p => p.specialty).filter(Boolean)));
-      return <HomeScreen onGoLogin={() => setActiveScreen('login-profesional')} especialidades={especialidades} />
+      return <HomeScreen onGoLogin={() => setActiveScreen('seleccion-login')} especialidades={especialidades} />
     }
     if (currentUser && isPacienteRole(currentUser.role) && !isPatientPortalScreen(activeScreen)) {
       return (
@@ -1496,6 +1528,14 @@ export default function App() {
       )
     }
     switch (activeScreen) {
+      case 'seleccion-login':
+        return (
+          <LoginRoleSelectorScreen
+            onGoPaciente={() => setActiveScreen('login-paciente')}
+            onGoProfesional={() => setActiveScreen('login-profesional')}
+            onGoBack={() => setActiveScreen('home')}
+          />
+        )
       case 'reset-password':
         return (
           <ResetPasswordScreen
@@ -1638,7 +1678,11 @@ export default function App() {
           />
         )
       case 'registro-paciente': {
-        const isExistingUser = emailCheckResult?.exists || Boolean(currentUser?.email && registerPacienteForm.email === currentUser.email)
+        const normalizedFormEmail = String(registerPacienteForm.email || '').trim().toLowerCase()
+        const normalizedCurrentEmail = String(currentUser?.email || '').trim().toLowerCase()
+        const sameAsCurrentUser = Boolean(normalizedCurrentEmail && normalizedFormEmail === normalizedCurrentEmail)
+        const isExistingUser = emailCheckResult?.exists || sameAsCurrentUser
+        const hasPatientProfile = emailCheckResult?.hasPatientProfile || (sameAsCurrentUser && isPacienteRole(currentUser?.role))
         return (
           <RegisterPacienteScreen
             registerForm={registerPacienteForm}
@@ -1646,6 +1690,7 @@ export default function App() {
             onSubmit={onRegisterPaciente}
             onGoLoginPaciente={() => setActiveScreen('login-paciente')}
             isExistingUser={isExistingUser}
+            hasPatientProfile={hasPatientProfile}
           />
         )
       }
@@ -1711,7 +1756,7 @@ export default function App() {
   }
 
   return (
-    <div>
+    <div className="app-root">
       <Topbar
         currentUser={currentUser}
         onLogout={onLogout}

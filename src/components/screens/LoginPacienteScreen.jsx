@@ -121,16 +121,16 @@ export function LoginPacienteScreen({
             </form>
 
             <div className="login-switch">
-              <span>¿Eres profesional?</span>
-              <button className="ghost" type="button" onClick={onGoProfesional}>Ingresar como profesional</button>
-            </div>
-            <div className="login-switch">
               <span>¿No tienes cuenta?</span>
               <button className="ghost" type="button" onClick={onGoRegisterPaciente}>Registrarme</button>
             </div>
             <div className="login-switch">
               <span>¿Recibiste invitación?</span>
               <button className="ghost" type="button" onClick={onGoAcceptInvitation}>Activar cuenta</button>
+            </div>
+            <div className="login-switch">
+              <span>¿Eres profesional?</span>
+              <button className="ghost" type="button" onClick={onGoProfesional}>Ingresar como profesional</button>
             </div>
           </>
         ) : (
