@@ -15,7 +15,7 @@ export function LoginRoleSelectorScreen({ onGoPaciente, onGoProfesional, onGoBac
         </div>
 
         <button className="text-link" type="button" onClick={onGoBack}>
-          ← Volver a bienvenida
+          ← Volver
         </button>
       </div>
     </section>

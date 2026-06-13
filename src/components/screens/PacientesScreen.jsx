@@ -41,18 +41,6 @@ export function PacientesScreen({
             <label>Email<input type="email" value={forms.pacienteCreate.email} onChange={(e) => onSetForm('pacienteCreate.email', e.target.value)} required /></label>
             <label>Nombre completo<input value={forms.pacienteCreate.displayName} onChange={(e) => onSetForm('pacienteCreate.displayName', e.target.value)} required /></label>
             <label>RUT<input value={forms.pacienteCreate.rut} onChange={(e) => onSetForm('pacienteCreate.rut', e.target.value)} required /></label>
-            <label>Teléfono
-              <div className="phone-input">
-                <span className="phone-prefix">+569</span>
-                <input
-                  value={forms.pacienteCreate.phone.replace(/^\+569/, '')}
-                  onChange={(e) => onSetForm('pacienteCreate.phone', '+569' + e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  placeholder="12345678"
-                  maxLength={8}
-                />
-              </div>
-            </label>
-            <label>Fecha de nacimiento<input type="date" value={forms.pacienteCreate.birthdate} onChange={(e) => onSetForm('pacienteCreate.birthdate', e.target.value)} /></label>
             <button className="primary full" type="submit">Registrar paciente</button>
           </form>
         </div>
