@@ -170,6 +170,7 @@ p { margin: 0; }
 
 /* LAYOUT */
 .app-shell {
+  width: 100%;
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px 24px;

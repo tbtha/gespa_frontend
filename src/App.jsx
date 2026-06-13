@@ -165,6 +165,7 @@ export default function App() {
     confirmPassword: '',
   })
   const [invitationForm, setInvitationForm] = useState({ token: '', newPassword: '', confirmPassword: '' })
+  const [invitationUserType, setInvitationUserType] = useState('professional')
   const [registerPacienteForm, setRegisterPacienteForm] = useState({
     email: '',
     displayName: '',
@@ -290,6 +291,21 @@ export default function App() {
     return true
   }
 
+  function bootstrapLoginRoute() {
+    if (typeof window === 'undefined') return false
+
+    const path = String(window.location.pathname || '').toLowerCase()
+    if (path === '/login-paciente' || path.endsWith('/login-paciente')) {
+      setActiveScreen('login-paciente')
+      return true
+    }
+    if (path === '/login-profesional' || path.endsWith('/login-profesional')) {
+      setActiveScreen('login-profesional')
+      return true
+    }
+    return false
+  }
+
   function bootstrapInvitationRoute() {
     if (typeof window === 'undefined') return false
 
@@ -299,6 +315,10 @@ export default function App() {
 
     const params = new URLSearchParams(window.location.search || '')
     const tokenFromUrl = String(params.get('token') || '').trim()
+    const userTypeFromUrl = String(params.get('userType') || params.get('role') || '').trim().toLowerCase()
+    const resolvedUserType = userTypeFromUrl === 'patient' || userTypeFromUrl === 'paciente'
+      ? 'patient'
+      : 'professional'
 
     setInvitationForm((prev) => ({
       ...prev,
@@ -306,6 +326,7 @@ export default function App() {
       newPassword: '',
       confirmPassword: '',
     }))
+    setInvitationUserType(resolvedUserType)
     setActiveScreen('aceptar-invitacion')
     setStatusMsg('')
     return true
@@ -314,9 +335,10 @@ export default function App() {
   useEffect(() => {
     const resetRouteDetected = bootstrapPasswordResetRoute()
     const invitationRouteDetected = bootstrapInvitationRoute()
+    const loginRouteDetected = bootstrapLoginRoute()
     initApp()
     // Si no hay usuario autenticado, cargar profesionales para la bienvenida
-    if (!getAuth().accessToken && !resetRouteDetected && !invitationRouteDetected) {
+    if (!getAuth().accessToken && !resetRouteDetected && !invitationRouteDetected && !loginRouteDetected) {
       loadProfesionales()
     }
   }, [])
@@ -981,7 +1003,7 @@ export default function App() {
     await withFeedback(async () => {
       await authApi.acceptProfessionalInvitation({ token: invitationForm.token, newPassword: invitationForm.newPassword })
       setInvitationForm({ token: '', newPassword: '', confirmPassword: '' })
-      setActiveScreen('login-profesional')
+      setActiveScreen(invitationUserType === 'patient' ? 'login-paciente' : 'login-profesional')
       return true
     }, 'Invitación aceptada. Ya puedes iniciar sesión')
   }
@@ -1558,6 +1580,7 @@ export default function App() {
             onSubmit={onLoginProfesional}
             onGoPaciente={() => setActiveScreen('login-paciente')}
             onGoAcceptInvitation={() => setActiveScreen('aceptar-invitacion')}
+            onGoBack={() => setActiveScreen('seleccion-login')}
           />
         )
       case 'dashboard':
@@ -1655,6 +1678,8 @@ export default function App() {
             onSubmit={onLoginPaciente}
             onGoProfesional={() => setActiveScreen('login-profesional')}
             onGoAcceptInvitation={() => setActiveScreen('aceptar-invitacion')}
+            onGoBack={() => setActiveScreen('seleccion-login')}
+
             onGoRegisterPaciente={() => {
               if (currentUser?.email) {
                 setRegisterPacienteForm((prev) => ({
@@ -1672,9 +1697,10 @@ export default function App() {
         return (
           <AcceptInvitationScreen
             invitationForm={invitationForm}
+            invitationUserType={invitationUserType}
             onSetInvitationForm={setInvitationField}
             onSubmit={onAcceptInvitation}
-            onGoLoginProfesional={() => setActiveScreen('login-profesional')}
+            onGoLogin={() => setActiveScreen(invitationUserType === 'patient' ? 'login-paciente' : 'login-profesional')}
           />
         )
       case 'registro-paciente': {

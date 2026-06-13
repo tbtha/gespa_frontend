@@ -10,6 +10,7 @@ export function LoginProfesionalScreen({
   onSubmit,
   onGoPaciente,
   onGoAcceptInvitation,
+  onGoBack,
 }) {
   const [showReset, setShowReset] = useState(false)
   const [resetStep, setResetStep] = useState('email') // 'email' | 'token'
@@ -131,6 +132,9 @@ export function LoginProfesionalScreen({
               <span>¿Eres paciente?</span>
               <button className="ghost" type="button" onClick={onGoPaciente}>Ingresar como paciente</button>
             </div>
+            <button className="text-link" type="button" onClick={onGoBack}>
+              ← Volver
+            </button>
           </>
         ) : (
           <>

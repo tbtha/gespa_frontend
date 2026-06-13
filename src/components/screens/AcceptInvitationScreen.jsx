@@ -1,8 +1,10 @@
-export function AcceptInvitationScreen({ invitationForm, onSetInvitationForm, onSubmit, onGoLoginProfesional }) {
+export function AcceptInvitationScreen({ invitationForm, invitationUserType = 'professional', onSetInvitationForm, onSubmit, onGoLogin }) {
+  const isPatientInvitation = invitationUserType === 'patient'
+
   return (
     <section className="screen active">
       <div className="card login-card">
-        <h3>Aceptar invitación profesional</h3>
+        <h3>{isPatientInvitation ? 'Aceptar invitación paciente' : 'Aceptar invitación profesional'}</h3>
         <p>Define tu contraseña para activar el acceso.</p>
         <form onSubmit={onSubmit}>
           <label>Token de invitación</label>
@@ -32,7 +34,9 @@ export function AcceptInvitationScreen({ invitationForm, onSetInvitationForm, on
         </form>
         <div className="login-switch">
           <span>¿Ya tienes acceso?</span>
-          <button className="ghost" type="button" onClick={onGoLoginProfesional}>Ir al login profesional</button>
+          <button className="ghost" type="button" onClick={onGoLogin}>
+            {isPatientInvitation ? 'Ir al login paciente' : 'Ir al login profesional'}
+          </button>
         </div>
       </div>
     </section>
