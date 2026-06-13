@@ -142,11 +142,11 @@ export function AdminScreen({
               </div>
 
               <div className="form-row">
-                <FormField label="RUT" hint="Ej: 12.345.678-9">
+                <FormField label="RUT" hint="Ej: 12345678-9">
                   <input
                     value={inviteForm.rut || ''}
                     onChange={(e) => onSetInviteForm('rut', e.target.value)}
-                    placeholder="12.345.678-9"
+                    placeholder="12345678-9"
                     required
                   />
                 </FormField>
@@ -245,11 +245,11 @@ export function AdminScreen({
               </div>
 
               <div className="form-row-single">
-                <FormField label="RUT" hint="Ej: 12.345.678-9">
+                <FormField label="RUT" hint="Ej: 12345678-9">
                   <input
                     value={patientInviteForm.rut}
                     onChange={(e) => onSetPatientInviteForm('rut', e.target.value)}
-                    placeholder="12.345.678-9"
+                    placeholder="12345678-9"
                     required
                   />
                 </FormField>

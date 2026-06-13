@@ -10,9 +10,9 @@ export function HomeScreen({ onGoLogin, especialidades = [] }) {
     <section className="screen active">
       <div className="card login-card" style={{ textAlign: 'center', maxWidth: 500, margin: '0 auto' }}>
         <img src={medicineIllustration} alt="Ilustración bienvenida GESPA" style={{ width: '100%', maxWidth: 220, height: 'auto', margin: '0 auto 18px auto', display: 'block', borderRadius: 12, boxShadow: '0 2px 16px #4361ee11' }} />
-        <h2 style={{ fontSize: '2.1rem', color: 'var(--primary)', margin: '0 0 10px 0', fontWeight: 700, letterSpacing: '-1px' }}>Bienvenido</h2>
+        <h2 style={{ fontSize: '2.1rem', color: 'var(--primary)', margin: '0 0 10px 0', fontWeight: 700, letterSpacing: '-1px' }}>Bienvenido/a</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.13rem', margin: '0 0 18px 0', lineHeight: 1.5 }}>
-          Somos una red de profesionales independientes de la salud mental y el bienestar. Cada especialista ofrece atención personalizada y de calidad, adaptada a tus necesidades y las de tu familia.
+          En GESPA, conectamos pacientes con profesionales de la salud de manera fácil y rápida. Explora nuestras especialidades y agenda tu cita en minutos.
         </p>
         <h3 style={{ color: 'var(--primary)', margin: '18px 0 8px 0', fontWeight: 600 }}>Especialidades disponibles</h3>
         {especialidades.length > 0 ? (
@@ -29,7 +29,7 @@ export function HomeScreen({ onGoLogin, especialidades = [] }) {
           onClick={onGoLogin}
           style={{ marginTop: 16 }}
         >
-          Iniciar sesión y agendar
+          Iniciar sesión
         </button>
       </div>
     </section>
