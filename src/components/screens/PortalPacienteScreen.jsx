@@ -71,14 +71,26 @@ export function PortalPacienteScreen({
   const [agendarSlot, setAgendarSlot] = useState(null)
   const [agendarTipoAtencion, setAgendarTipoAtencion] = useState('PRIMERA_CONSULTA')
   const [agendarMotivo, setAgendarMotivo] = useState('')
-  // Filtro de especialidad para slots
+  // Filtros para el buscador de profesionales
   const [filtroEspecialidad, setFiltroEspecialidad] = useState('')
+  const [filtroNombre, setFiltroNombre] = useState('')
+  const [filtroUbicacion, setFiltroUbicacion] = useState('')
+  const [filtroDisponibilidad, setFiltroDisponibilidad] = useState('')
 
   // Obtener lista de especialidades únicas de los slots disponibles
   const especialidadesDisponibles = useMemo(() => {
     const set = new Set()
     slotsDisponibles.forEach(s => {
       if (s.profesionalEspecialidad || s.specialty) set.add(s.profesionalEspecialidad || s.specialty)
+    })
+    return Array.from(set)
+  }, [slotsDisponibles])
+
+  // Obtener lista de ubicaciones únicas de los slots disponibles
+  const ubicacionesDisponibles = useMemo(() => {
+    const set = new Set()
+    slotsDisponibles.forEach(s => {
+      if (s.lugar || s.place) set.add(s.lugar || s.place)
     })
     return Array.from(set)
   }, [slotsDisponibles])
@@ -158,81 +170,120 @@ export function PortalPacienteScreen({
               <button className="ghost sm" style={{ color: '#fff', fontSize: '1.2em' }} onClick={() => setShowAgendarModal(false)}>✕</button>
             </div>
             <form onSubmit={agendarSlot ? handleConfirmarSlot : (e) => e.preventDefault()} className="form-grid" style={{ gap: 18, margin: 0, padding: '28px 32px 18px 32px' }}>
-              <label style={{ fontWeight: 600 }}>Selecciona una fecha
-                <input type="date" value={agendarFecha} min={new Date().toISOString().slice(0, 10)}
-                  onChange={handleFechaChange} required />
-              </label>
-              <label style={{ fontWeight: 600 }}>Tipo de atención
-                <select
-                  value={agendarTipoAtencion}
-                  onChange={(e) => setAgendarTipoAtencion(e.target.value)}
-                  required
-                >
-                  {tipoAtencionItems.map((it) => (
-                    <option key={it.value} value={it.value}>{it.label}</option>
-                  ))}
-                </select>
-              </label>
+              <div style={{ marginBottom: 18, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 10px', background: '#f8fafc' }}>
+                <label style={{ fontWeight: 600, minWidth: 160 }}>
+                  Especialidad<br />
+                  <select value={filtroEspecialidad} onChange={e => setFiltroEspecialidad(e.target.value)} style={{ width: '100%', marginTop: 4 }} disabled={slotsDisponibles.length === 0}>
+                    <option value="">Todas</option>
+                    {especialidadesDisponibles.map((esp, idx) => (
+                      <option key={idx} value={esp}>{esp}</option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ fontWeight: 600, minWidth: 160 }}>
+                  Nombre del profesional<br />
+                  <input type="text" value={filtroNombre} onChange={e => setFiltroNombre(e.target.value)} placeholder="Buscar profesional" style={{ width: '100%', marginTop: 4 }} disabled={slotsDisponibles.length === 0} />
+                </label>
+                <label style={{ fontWeight: 600, minWidth: 160 }}>
+                  Ubicación<br />
+                  <select value={filtroUbicacion} onChange={e => setFiltroUbicacion(e.target.value)} style={{ width: '100%', marginTop: 4 }} disabled={slotsDisponibles.length === 0}>
+                    <option value="">Todas</option>
+                    {ubicacionesDisponibles.map((ubi, idx) => (
+                      <option key={idx} value={ubi}>{ubi}</option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ fontWeight: 600, minWidth: 120 }}>
+                  Disponibilidad<br />
+                  <select value={filtroDisponibilidad} onChange={e => setFiltroDisponibilidad(e.target.value)} style={{ width: '100%', marginTop: 4 }} disabled={slotsDisponibles.length === 0}>
+                    <option value="">Todas</option>
+                    <option value="mañana">Mañana</option>
+                    <option value="tarde">Tarde</option>
+                  </select>
+                </label>
+                <label style={{ fontWeight: 600, minWidth: 140 }}>
+                  Fecha<br />
+                  <input type="date" value={agendarFecha} min={new Date().toISOString().slice(0, 10)}
+                    onChange={handleFechaChange} required style={{ width: '100%', marginTop: 4 }} />
+                </label>
+                <label style={{ fontWeight: 600, minWidth: 160 }}>
+                  Tipo de atención<br />
+                  <select
+                    value={agendarTipoAtencion}
+                    onChange={(e) => setAgendarTipoAtencion(e.target.value)}
+                    required
+                    style={{ width: '100%', marginTop: 4 }}
+                  >
+                    {tipoAtencionItems.map((it) => (
+                      <option key={it.value} value={it.value}>{it.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               {slotsLoading ? (
                 <p className="meta">Cargando horarios disponibles…</p>
-              ) : slotsDisponibles.length === 0 ? (
-                <p className="meta">No hay horarios disponibles para esta fecha.</p>
               ) : (
-                <div>
-                  <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <label style={{ fontWeight: 500, fontSize: '0.98em' }}>
-                      Filtrar por especialidad:
-                      <select value={filtroEspecialidad} onChange={e => setFiltroEspecialidad(e.target.value)} style={{ marginLeft: 8 }}>
-                        <option value="">Todas</option>
-                        {especialidadesDisponibles.map((esp, idx) => (
-                          <option key={idx} value={esp}>{esp}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                  <p className="meta-label" style={{ fontWeight: 600, marginBottom: 6 }}>Horarios disponibles</p>
-                  <div className="slots-grid" style={{ gap: 12 }}>
-                    {slotsDisponibles
-                      .filter(s => !filtroEspecialidad || s.profesionalEspecialidad === filtroEspecialidad || s.specialty === filtroEspecialidad)
-                      .map((s, i) => {
-                        const start = new Date(s.startsAt)
-                        const selected = agendarSlot === s
-                        return (
-                          <button
-                            key={i}
-                            className={`slot-btn ${selected ? 'selected' : ''}`}
-                            onClick={() => setAgendarSlot(s)}
-                            type="button"
-                            style={{
-                              border: selected ? '2px solid var(--primary)' : '1.5px solid var(--border)',
-                              background: selected ? 'var(--primary-light)' : 'var(--surface)',
-                              color: selected ? 'var(--primary-dark)' : 'var(--text)',
-                              boxShadow: selected ? '0 2px 8px rgba(67,97,238,0.08)' : 'none',
-                              minWidth: 120,
-                              minHeight: 56,
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'flex-start',
-                              gap: 2,
-                              fontWeight: 600,
-                              fontSize: '1.05em',
-                              transition: 'all 0.18s',
-                            }}
-                          >
-                            <span className="slot-time" style={{ fontWeight: 700, fontSize: '1.1em', color: selected ? 'var(--primary-dark)' : 'var(--primary)' }}>
-                              {start.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            <span className="slot-meta" style={{ fontSize: '0.92em', color: '#64748b', fontWeight: 500 }}>
-                              {s.profesionalNombre} · {s.profesionalEspecialidad || s.specialty || '—'}
-                            </span>
-                            <span className="slot-meta" style={{ fontSize: '0.92em', color: '#64748b', fontWeight: 400 }}>
-                              {toModalidadLabel(s.modalidad)}{s.lugar ? ` · ${s.lugar}` : s.place ? ` · ${s.place}` : ''}
-                            </span>
-                          </button>
-                        )
-                      })}
-                  </div>
-                </div>
+                <>
+                  {slotsDisponibles.length === 0 ? (
+                    <p className="meta" style={{ color: '#b91c1c', fontWeight: 500, margin: '18px 0 0 0' }}>
+                      No hay horarios disponibles para la fecha seleccionada. Prueba cambiando la fecha o ajustando los filtros.
+                    </p>
+                  ) : (
+                    <div>
+                      <p className="meta-label" style={{ fontWeight: 600, marginBottom: 6 }}>Horarios disponibles</p>
+                      <div className="slots-grid" style={{ gap: 12 }}>
+                        {slotsDisponibles
+                          .filter(s => !filtroEspecialidad || s.profesionalEspecialidad === filtroEspecialidad || s.specialty === filtroEspecialidad)
+                          .filter(s => !filtroNombre || (s.profesionalNombre || '').toLowerCase().includes(filtroNombre.toLowerCase()))
+                          .filter(s => !filtroUbicacion || s.lugar === filtroUbicacion || s.place === filtroUbicacion)
+                          .filter(s => {
+                            if (!filtroDisponibilidad) return true
+                            const hour = new Date(s.startsAt).getHours()
+                            if (filtroDisponibilidad === 'mañana') return hour < 14
+                            if (filtroDisponibilidad === 'tarde') return hour >= 14
+                            return true
+                          })
+                          .map((s, i) => {
+                            const start = new Date(s.startsAt)
+                            const selected = agendarSlot === s
+                            return (
+                              <button
+                                key={i}
+                                className={`slot-btn ${selected ? 'selected' : ''}`}
+                                onClick={() => setAgendarSlot(s)}
+                                type="button"
+                                style={{
+                                  border: selected ? '2px solid var(--primary)' : '1.5px solid var(--border)',
+                                  background: selected ? 'var(--primary-light)' : 'var(--surface)',
+                                  color: selected ? 'var(--primary-dark)' : 'var(--text)',
+                                  boxShadow: selected ? '0 2px 8px rgba(67,97,238,0.08)' : 'none',
+                                  minWidth: 120,
+                                  minHeight: 56,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-start',
+                                  gap: 2,
+                                  fontWeight: 600,
+                                  fontSize: '1.05em',
+                                  transition: 'all 0.18s',
+                                }}
+                              >
+                                <span className="slot-time" style={{ fontWeight: 700, fontSize: '1.1em', color: selected ? 'var(--primary-dark)' : 'var(--primary)' }}>
+                                  {start.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                <span className="slot-meta" style={{ fontSize: '0.92em', color: '#64748b', fontWeight: 500 }}>
+                                  {s.profesionalNombre} · {s.profesionalEspecialidad || s.specialty || '—'}
+                                </span>
+                                <span className="slot-meta" style={{ fontSize: '0.92em', color: '#64748b', fontWeight: 400 }}>
+                                  {toModalidadLabel(s.modalidad)}{s.lugar ? ` · ${s.lugar}` : s.place ? ` · ${s.place}` : ''}
+                                </span>
+                              </button>
+                            )
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               {agendarSlot && (
                 <label style={{ fontWeight: 600 }}>Motivo (opcional)
