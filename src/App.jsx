@@ -223,8 +223,15 @@ export default function App() {
     id: '',
     displayName: '',
     email: '',
+    birthdate: '',
+    gender: 'FEMENINO',
+    prevision: 'FONASA',
+    estadoCivil: 'SOLTERO',
+    ocupacion: '',
     phone: '',
     address: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
   })
   const [patientCitas, setPatientCitas] = useState([])
   const [patientAssignedProfessionalName, setPatientAssignedProfessionalName] = useState('')
@@ -864,8 +871,15 @@ export default function App() {
         id: String(profile.id || resolvedPatientId),
         displayName: profile.displayName || '',
         email: profile.email || currentUser?.email || '',
+        birthdate: profile.birthdate || '',
+        gender: profile.gender || 'FEMENINO',
+        prevision: profile.prevision || 'FONASA',
+        estadoCivil: profile.estadoCivil || 'SOLTERO',
+        ocupacion: profile.ocupacion || '',
         phone: profile.phone || '',
         address: profile.address || '',
+        emergencyContactName: profile.emergencyContactName || '',
+        emergencyContactPhone: profile.emergencyContactPhone || '',
       })
 
       const citasData = await citaApi.listByPaciente(resolvedPatientId).catch((err) => {
@@ -913,15 +927,15 @@ export default function App() {
     const payload = {
       email: patientProfileForm.email,
       displayName: patientProfileForm.displayName,
-      birthdate: patientProfileRaw.birthdate || null,
-      gender: patientProfileRaw.gender || null,
-      prevision: patientProfileRaw.prevision || null,
-      estadoCivil: patientProfileRaw.estadoCivil || null,
-      ocupacion: patientProfileRaw.ocupacion || null,
+      birthdate: patientProfileForm.birthdate || null,
+      gender: patientProfileForm.gender || null,
+      prevision: patientProfileForm.prevision || null,
+      estadoCivil: patientProfileForm.estadoCivil || null,
+      ocupacion: patientProfileForm.ocupacion || null,
       phone: patientProfileForm.phone || null,
       address: patientProfileForm.address || null,
-      emergencyContactName: patientProfileRaw.emergencyContactName || null,
-      emergencyContactPhone: patientProfileRaw.emergencyContactPhone || null,
+      emergencyContactName: patientProfileForm.emergencyContactName || null,
+      emergencyContactPhone: patientProfileForm.emergencyContactPhone || null,
     }
 
     await withFeedback(() => pacienteApi.update(patientId, payload), 'Perfil actualizado')
@@ -1521,6 +1535,7 @@ export default function App() {
           onRefreshMe={loadMe}
           slotsDisponibles={slotsDisponibles}
           slotsLoading={slotsLoading}
+          catalogs={catalogs}
           tiposAtencionOptions={catalogs.tiposAtencion}
           onFetchSlots={fetchSlotsForDate}
           onAgendarDesdeSlot={agendarDesdeSlot}
@@ -1759,6 +1774,7 @@ export default function App() {
             onRefreshMe={loadMe}
             slotsDisponibles={slotsDisponibles}
             slotsLoading={slotsLoading}
+            catalogs={catalogs}
             tiposAtencionOptions={catalogs.tiposAtencion}
             onFetchSlots={fetchSlotsForDate}
             onAgendarDesdeSlot={agendarDesdeSlot}

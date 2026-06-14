@@ -12,6 +12,7 @@ export function PortalPacienteScreen({
   onSavePatientProfile,
   onReloadPacienteData,
   onRefreshMe,
+  catalogs = {},
   // scheduling
   slotsDisponibles,
   slotsLoading,
@@ -64,6 +65,20 @@ export function PortalPacienteScreen({
 
     return TIPO_ATENCION.map((value) => ({ value, label: TIPO_ATENCION_LABEL[value] || value }))
   }, [tiposAtencionOptions])
+
+  const previsionOptions = catalogs.previsiones?.length
+    ? catalogs.previsiones
+    : [{ value: 'FONASA', label: 'FONASA' }, { value: 'ISAPRE', label: 'ISAPRE' }, { value: 'PARTICULAR', label: 'Particular' }]
+
+  const estadoCivilOptions = catalogs.estadosCiviles?.length
+    ? catalogs.estadosCiviles
+    : [
+        { value: 'SOLTERO', label: 'Soltero/a' },
+        { value: 'CASADO', label: 'Casado/a' },
+        { value: 'CONVIVIENTE', label: 'Conviviente' },
+        { value: 'DIVORCIADO', label: 'Divorciado/a' },
+        { value: 'VIUDO', label: 'Viudo/a' },
+      ]
 
   // --- Scheduling modal state ---
   const [showAgendarModal, setShowAgendarModal] = useState(false)
@@ -372,6 +387,30 @@ export function PortalPacienteScreen({
           <label>Nombre
             <input value={patientProfileForm.displayName || ''} onChange={(e) => onSetPatientProfileField('displayName', e.target.value)} required />
           </label>
+          <label>Fecha de nacimiento
+            <input type="date" value={patientProfileForm.birthdate || ''} onChange={(e) => onSetPatientProfileField('birthdate', e.target.value)} />
+          </label>
+          <label>Género
+            <select value={patientProfileForm.gender || 'FEMENINO'} onChange={(e) => onSetPatientProfileField('gender', e.target.value)}>
+              <option value="FEMENINO">Femenino</option>
+              <option value="MASCULINO">Masculino</option>
+              <option value="NO_BINARIO">No binario</option>
+              <option value="PREFIERE_NO_DECIR">Prefiere no decir</option>
+            </select>
+          </label>
+          <label>Previsión
+            <select value={patientProfileForm.prevision || 'FONASA'} onChange={(e) => onSetPatientProfileField('prevision', e.target.value)}>
+              {previsionOptions.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
+            </select>
+          </label>
+          <label>Estado civil
+            <select value={patientProfileForm.estadoCivil || 'SOLTERO'} onChange={(e) => onSetPatientProfileField('estadoCivil', e.target.value)}>
+              {estadoCivilOptions.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
+            </select>
+          </label>
+          <label>Ocupación
+            <input value={patientProfileForm.ocupacion || ''} onChange={(e) => onSetPatientProfileField('ocupacion', e.target.value)} />
+          </label>
           <label>Teléfono
             <input value={patientProfileForm.phone || ''} onChange={(e) => onSetPatientProfileField('phone', e.target.value)} />
           </label>
@@ -380,6 +419,12 @@ export function PortalPacienteScreen({
           </label>
           <label>Dirección (opcional)
             <input value={patientProfileForm.address || ''} onChange={(e) => onSetPatientProfileField('address', e.target.value)} />
+          </label>
+          <label>Contacto de emergencia
+            <input value={patientProfileForm.emergencyContactName || ''} onChange={(e) => onSetPatientProfileField('emergencyContactName', e.target.value)} />
+          </label>
+          <label>Tel. emergencia
+            <input value={patientProfileForm.emergencyContactPhone || ''} onChange={(e) => onSetPatientProfileField('emergencyContactPhone', e.target.value)} />
           </label>
           <button className="primary full" type="submit">Guardar cambios</button>
         </form>

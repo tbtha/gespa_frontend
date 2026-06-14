@@ -1,5 +1,5 @@
 const PROFESSIONAL_SCREENS = [
-  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'dashboard', label: 'Inicio' },
   { id: 'agenda', label: 'Agenda' },
   { id: 'pacientes', label: 'Pacientes' },
   { id: 'perfil-profesional', label: 'Mi perfil' },
