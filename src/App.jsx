@@ -31,6 +31,7 @@ import { RegisterPacienteScreen } from './components/screens/RegisterPacienteScr
 import { AdminScreen } from './components/screens/AdminScreen'
 import { ResetPasswordScreen } from './components/screens/ResetPasswordScreen'
 import { LoginRoleSelectorScreen } from './components/screens/LoginRoleSelectorScreen'
+import { PoliticasScreen } from './components/screens/PoliticasScreen'
 
 function toChileYmd(date = new Date()) {
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -1573,6 +1574,8 @@ export default function App() {
             onGoBack={() => setActiveScreen('home')}
           />
         )
+      case 'politicas':
+        return <PoliticasScreen />
       case 'reset-password':
         return (
           <ResetPasswordScreen
@@ -1817,7 +1820,7 @@ export default function App() {
         </main>
       </div>
 
-      <FooterBar />
+      <FooterBar onNavigate={(screen) => setActiveScreen(screen)} />
     </div>
   )
 }
