@@ -1,7 +1,7 @@
 export const SCREEN_META = {
   profesional: [
     { id: 'login-profesional', label: '1. Login profesional' },
-    { id: 'dashboard', label: '2. Dashboard' },
+    { id: 'dashboard', label: '2. Inicio' },
     { id: 'perfil-profesional', label: '2.1 Perfil profesional' },
     { id: 'pacientes', label: '3. Selección/creación paciente' },
     { id: 'ficha', label: '4. Ficha paciente' },
