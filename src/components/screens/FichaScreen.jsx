@@ -153,9 +153,8 @@ export function FichaScreen({
             <label>Actividad física
               <select value={forms.antecedente.actividadFisica || 'SEDENTARIO'} onChange={(e) => onSetForm('antecedente.actividadFisica', e.target.value)}>
                 <option value="SEDENTARIO">Sedentario</option>
-                <option value="LEVE">Leve</option>
-                <option value="MODERADO">Moderado</option>
-                <option value="INTENSO">Intenso</option>
+                <option value="UNA_DOS_SEMANA">1-2 veces/semana</option>
+                <option value="TRES_MAS_SEMANA">3+ veces/semana</option>
               </select>
             </label>
             <label className="full">Medicamentos regulares
