@@ -154,7 +154,10 @@ function normalizeRut(value) {
 
 export default function App() {
   const [activeScreen, setActiveScreen] = useState('home')
-  const [statusMsg, setStatusMsg] = useState('')
+  const [statusMsg, setStatusMsg] = useState(null) // { text, type: 'success'|'error'|'warning' }
+  const setOk   = (text) => setStatusMsg({ text, type: 'success' })
+  const setError = (text) => setStatusMsg({ text, type: 'error' })
+  const setWarn  = (text) => setStatusMsg({ text, type: 'warning' })
   const [health, setHealth] = useState('')
 
   const [auth, setAuthState] = useState({ email: '', password: '' })
@@ -295,7 +298,7 @@ export default function App() {
       confirmPassword: '',
     }))
     setActiveScreen('reset-password')
-    setStatusMsg('')
+    setStatusMsg(null)
     return true
   }
 
@@ -336,7 +339,7 @@ export default function App() {
     }))
     setInvitationUserType(resolvedUserType)
     setActiveScreen('aceptar-invitacion')
-    setStatusMsg('')
+    setStatusMsg(null)
     return true
   }
 
@@ -359,7 +362,7 @@ export default function App() {
     function onAuthExpired() {
       setCurrentUser(null)
       setActiveScreen('login-profesional')
-      setStatusMsg('⚠️ Tu sesión expiró. Vuelve a iniciar sesión.')
+      setWarn('Tu sesión expiró. Vuelve a iniciar sesión.')
     }
 
     if (typeof window !== 'undefined') {
@@ -373,12 +376,12 @@ export default function App() {
   function formatLoginError(error, expectedRole) {
     const msg = String(error?.message || '')
     if (expectedRole === 'PROFESSIONAL' && msg.toLowerCase().includes('no tiene perfil profesional')) {
-      return '❌ Esta cuenta no tiene perfil profesional. Ingresa por el login de paciente.'
+      return 'Esta cuenta no tiene perfil profesional. Ingresa por el login de paciente.'
     }
     if (expectedRole === 'PATIENT' && msg.toLowerCase().includes('no tiene perfil de paciente')) {
-      return '❌ Esta cuenta no tiene perfil de paciente. Ingresa por el login profesional.'
+      return 'Esta cuenta no tiene perfil de paciente. Ingresa por el login profesional.'
     }
-    return `❌ ${msg || 'No se pudo iniciar sesión'}`
+    return `${msg || 'No se pudo iniciar sesión'}`
   }
 
   async function switchSessionRole(targetRole) {
@@ -412,9 +415,9 @@ export default function App() {
         await Promise.all([loadAdminUsers(), loadProfessionalSpecialties(), loadAdminSpecialties()])
       }
 
-      setStatusMsg('✅ Rol de sesión actualizado')
+      setOk('Rol de sesión actualizado')
     } catch (error) {
-      setStatusMsg(`❌ ${error.message}`)
+      setError(error.message)
     }
   }
 
@@ -424,7 +427,7 @@ export default function App() {
       setHealth(JSON.stringify(h))
     } catch (err) {
       setHealth('No disponible')
-      setStatusMsg(`❌ Backend no disponible: ${err.message}`)
+      setError(`Backend no disponible: ${err.message}`)
     }
     if (hasToken) {
       try {
@@ -464,7 +467,7 @@ export default function App() {
       } catch {
         // token expirado, inválido o backend error → limpiar silenciosamente
         clearAuth()
-        setStatusMsg('')
+        setStatusMsg(null)
       }
     }
   }
@@ -472,10 +475,10 @@ export default function App() {
   async function withFeedback(fn, okMsg) {
     try {
       const value = await fn()
-      if (okMsg) setStatusMsg(`✅ ${okMsg}`)
+      if (okMsg) setOk(okMsg)
       return value
     } catch (error) {
-      setStatusMsg(`❌ ${error.message}`)
+      setError(error.message)
       return null
     }
   }
@@ -568,9 +571,9 @@ export default function App() {
     await withFeedback(async () => {
       const payload = await adminApi.createProfessionalInvitation({ ...adminInviteForm })
       if (payload?.inviteToken) {
-        setStatusMsg(`✅ Invitación creada. Token de invitación: ${payload.inviteToken}`)
+        setOk(`Invitación creada. Token de invitación: ${payload.inviteToken}`)
       } else {
-        setStatusMsg('✅ Perfil profesional creado para usuario existente (sin invitación nueva).')
+        setOk('Perfil profesional creado para usuario existente (sin invitación nueva).')
       }
       setAdminInviteForm((prev) => ({
         ...prev,
@@ -618,9 +621,9 @@ export default function App() {
     await withFeedback(async () => {
       const payload = await adminApi.createPatientInvitation({ ...adminPatientInviteForm })
       if (payload?.inviteToken) {
-        setStatusMsg(`✅ Paciente creado. Token de invitación: ${payload.inviteToken}`)
+        setOk(`Paciente creado. Token de invitación: ${payload.inviteToken}`)
       } else {
-        setStatusMsg('✅ Perfil de paciente creado para usuario existente (sin invitación nueva).')
+        setOk('Perfil de paciente creado para usuario existente (sin invitación nueva).')
       }
       setAdminPatientInviteForm({ email: '', displayName: '', rut: '' })
       await loadAdminUsers()
@@ -639,7 +642,7 @@ export default function App() {
   async function resetUserPassword(userId) {
     await withFeedback(async () => {
       const payload = await adminApi.resetPassword(userId)
-      setStatusMsg(`✅ Password temporal: ${payload.temporaryPassword}`)
+      setOk(`Correo de recuperación enviado a ${payload.email}`)
       return payload
     })
   }
@@ -693,9 +696,9 @@ export default function App() {
         setActiveScreen('dashboard')
         await loadDashboardWorkspace()
       }
-      setStatusMsg('✅ Login profesional correcto')
+      setOk('Login profesional correcto')
     } catch (error) {
-      setStatusMsg(formatLoginError(error, 'PROFESSIONAL'))
+      setError(formatLoginError(error, 'PROFESSIONAL'))
     }
   }
 
@@ -733,9 +736,9 @@ export default function App() {
         setActiveScreen('dashboard')
         await loadDashboardWorkspace()
       }
-      setStatusMsg('✅ Login paciente correcto')
+      setOk('Login paciente correcto')
     } catch (error) {
-      setStatusMsg(formatLoginError(error, 'PATIENT'))
+      setError(formatLoginError(error, 'PATIENT'))
     }
   }
 
@@ -749,7 +752,7 @@ export default function App() {
     clearAuth()
     setCurrentUser(null)
     setActiveScreen('login-profesional')
-    setStatusMsg('')
+    setStatusMsg(null)
 
     if (typeof window !== 'undefined') {
       window.location.reload()
@@ -761,7 +764,7 @@ export default function App() {
       const data = await horariosApi.list(profesionalId || selectedProfesionalId)
       setHorarios(data || [])
     } catch (err) {
-      setStatusMsg(`❌ ${err.message}`)
+      setError(err.message)
     }
   }
 
@@ -792,7 +795,7 @@ export default function App() {
       const data = await horariosApi.getAllSlots(fecha)
       setSlotsDisponibles(data || [])
     } catch (err) {
-      setStatusMsg(`❌ ${err.message}`)
+      setError(err.message)
     } finally {
       setSlotsLoading(false)
     }
@@ -884,7 +887,7 @@ export default function App() {
       })
 
       const citasData = await citaApi.listByPaciente(resolvedPatientId).catch((err) => {
-        setStatusMsg(`❌ No se pudieron cargar las citas: ${err.message}`)
+        setError(`No se pudieron cargar las citas: ${err.message}`)
         return []
       })
 
@@ -912,7 +915,7 @@ export default function App() {
       try {
         return await runner()
       } catch (error) {
-        setStatusMsg(`❌ ${error.message}`)
+        setError(error.message)
         return null
       }
     }
@@ -950,7 +953,7 @@ export default function App() {
   async function onRequestPasswordReset(emailInput) {
     const email = String(emailInput || passwordReset.email || auth.email || '').trim()
     if (!email) {
-      setStatusMsg('❌ Ingresa un correo para recuperar contraseña')
+      setError('Ingresa un correo para recuperar contraseña')
       return null
     }
 
@@ -962,10 +965,10 @@ export default function App() {
       }))
 
       const message = data?.message || 'Si el correo existe, se ha generado un token de recuperación'
-      setStatusMsg(`✅ ${message}`)
+      setOk(`${message}`)
       return data
     } catch (error) {
-      setStatusMsg(`❌ ${error.message}`)
+      setError(error.message)
       return null
     }
   }
@@ -973,17 +976,17 @@ export default function App() {
   async function onConfirmPasswordReset({ token, newPassword, confirmPassword }) {
     const cleanToken = String(token || '').trim()
     if (!cleanToken) {
-      setStatusMsg('❌ Ingresa el token de recuperación')
+      setError('Ingresa el token de recuperación')
       return null
     }
 
     if (!newPassword || newPassword.length < 8) {
-      setStatusMsg('❌ La nueva contraseña debe tener al menos 8 caracteres')
+      setError('La nueva contraseña debe tener al menos 8 caracteres')
       return null
     }
 
     if (newPassword !== confirmPassword) {
-      setStatusMsg('❌ Las contraseñas no coinciden')
+      setError('Las contraseñas no coinciden')
       return null
     }
 
@@ -1007,11 +1010,11 @@ export default function App() {
   async function onAcceptInvitation(e) {
     e.preventDefault()
     if (!invitationForm.newPassword || invitationForm.newPassword.length < 8) {
-      setStatusMsg('❌ La contraseña debe tener al menos 8 caracteres')
+      setError('La contraseña debe tener al menos 8 caracteres')
       return
     }
     if (invitationForm.newPassword !== invitationForm.confirmPassword) {
-      setStatusMsg('❌ Las contraseñas no coinciden')
+      setError('Las contraseñas no coinciden')
       return
     }
 
@@ -1046,17 +1049,17 @@ export default function App() {
     const hasPatientProfile = emailCheckResult?.hasPatientProfile || (sameAsCurrentUser && isPacienteRole(currentUser?.role))
 
     if (hasPatientProfile) {
-      setStatusMsg('❌ Este correo ya tiene un perfil de paciente. Inicia sesión en el portal paciente.')
+      setError('Este correo ya tiene un perfil de paciente. Inicia sesión en el portal paciente.')
       return
     }
 
     if (!isExistingUser) {
       if (!registerPacienteForm.password || registerPacienteForm.password.length < 8) {
-        setStatusMsg('❌ La contraseña debe tener al menos 8 caracteres')
+        setError('La contraseña debe tener al menos 8 caracteres')
         return
       }
       if (registerPacienteForm.password !== registerPacienteForm.confirmPassword) {
-        setStatusMsg('❌ Las contraseñas no coinciden')
+        setError('Las contraseñas no coinciden')
         return
       }
     }
@@ -1078,7 +1081,7 @@ export default function App() {
 
   async function loadDashboard() {
     const id = currentUser?.id || selectedProfesionalId
-    if (!id) return setStatusMsg('❌ No hay sesión activa')
+    if (!id) return setError('No hay sesión activa')
     await withFeedback(async () => {
       await loadDashboardWorkspace()
       return true
@@ -1193,7 +1196,7 @@ export default function App() {
 
   async function savePacienteGeneral(e) {
     e.preventDefault()
-    if (!selectedPacienteId) return setStatusMsg('❌ Selecciona paciente')
+    if (!selectedPacienteId) return setError('Selecciona paciente')
 
     const { id, email, rut, ...payload } = forms.pacienteUpdate
     await withFeedback(() => pacienteApi.update(id || selectedPacienteId, payload), 'Datos generales actualizados')
@@ -1215,7 +1218,7 @@ export default function App() {
         setNotas(data)
         return data
       } catch (error) {
-        setStatusMsg(`❌ ${error.message}`)
+        setError(error.message)
         return null
       }
     }
@@ -1239,7 +1242,7 @@ export default function App() {
       setCitasPaciente(data || [])
       return data
     } catch (err) {
-      setStatusMsg(`❌ No se pudieron cargar las citas: ${err.message}`)
+      setError(`No se pudieron cargar las citas: ${err.message}`)
       const professionalId = currentUser?.id || selectedProfesionalId
 
       if (professionalId) {
@@ -1249,7 +1252,7 @@ export default function App() {
           setCitasPaciente(filtered)
 
           if (filtered.length > 0 && !silent) {
-            setStatusMsg('⚠️ Se cargaron horas del paciente desde la agenda actual')
+            setOk('Se cargaron horas del paciente desde la agenda actual')
           }
           return filtered
         } catch {
@@ -1261,19 +1264,19 @@ export default function App() {
       setCitasPaciente(localFallback)
 
       if (localFallback.length > 0 && !silent) {
-        setStatusMsg('⚠️ Se usaron horas ya cargadas en la agenda')
+        setOk('Se usaron horas ya cargadas en la agenda')
       }
       if (localFallback.length > 0) return localFallback
 
-      if (!silent) setStatusMsg('⚠️ No se pudieron cargar horas agendadas del paciente')
+      if (!silent) setWarn('No se pudieron cargar horas agendadas del paciente')
       return []
     }
   }
 
   async function createNota(e) {
     e.preventDefault()
-    if (!selectedPacienteId) return setStatusMsg('❌ Selecciona paciente')
-    if (!forms.notaCreate.appointmentId) return setStatusMsg('❌ La nota debe estar asociada a una cita')
+    if (!selectedPacienteId) return setError('Selecciona paciente')
+    if (!forms.notaCreate.appointmentId) return setError('La nota debe estar asociada a una cita')
     await withFeedback(() => notaApi.create(selectedPacienteId, {
       ...forms.notaCreate,
       professionalId: Number(forms.notaCreate.professionalId),
@@ -1293,7 +1296,7 @@ export default function App() {
         setForms((prev) => ({ ...prev, antecedente: { ...prev.antecedente, ...data } }))
         return data
       } catch (error) {
-        setStatusMsg(`❌ ${error.message}`)
+        setError(error.message)
         return null
       }
     }
@@ -1308,14 +1311,14 @@ export default function App() {
 
   async function saveAntecedentes(e) {
     e.preventDefault()
-    if (!selectedPacienteId) return setStatusMsg('❌ Selecciona paciente')
+    if (!selectedPacienteId) return setError('Selecciona paciente')
     await withFeedback(() => antecedentesApi.upsert(selectedPacienteId, forms.antecedente), 'Antecedentes guardados')
     await loadAntecedentes(selectedPacienteId, { silent: true })
   }
 
   async function loadAgenda({ silent = false } = {}) {
     const professionalId = currentUser?.id || selectedProfesionalId
-    if (!professionalId) return setStatusMsg('❌ No se pudo identificar el profesional de la sesión')
+    if (!professionalId) return setError('No se pudo identificar el profesional de la sesión')
 
     if (silent) {
       try {
@@ -1323,7 +1326,7 @@ export default function App() {
         setCitas(data)
         return data
       } catch (error) {
-        setStatusMsg(`❌ ${error.message}`)
+        setError(error.message)
         return null
       }
     }
@@ -1337,7 +1340,7 @@ export default function App() {
 
   async function changeAgendaMonth(monthDate) {
     const professionalId = currentUser?.id || selectedProfesionalId
-    if (!professionalId) return setStatusMsg('❌ No se pudo identificar el profesional de la sesión')
+    if (!professionalId) return setError('No se pudo identificar el profesional de la sesión')
 
     const nextRange = buildMonthRange(monthDate)
     setAgendaRange(nextRange)
@@ -1352,7 +1355,7 @@ export default function App() {
   async function createCita(e) {
     e.preventDefault()
     const rutInput = String(forms.citaCreate.pacienteRut || '').trim()
-    if (!rutInput) return setStatusMsg('❌ Ingresa el RUT del paciente')
+    if (!rutInput) return setError('Ingresa el RUT del paciente')
 
     let patientResult = await lookupPacienteByRut(rutInput, { silent: true })
 
@@ -1361,7 +1364,7 @@ export default function App() {
       const inviteEmail = String(forms.citaCreate.pacienteEmail || '').trim()
 
       if (!inviteDisplayName || !inviteEmail) {
-        setStatusMsg('❌ Paciente no encontrado. Completa nombre y correo para crear invitación')
+        setError('Paciente no encontrado. Completa nombre y correo para crear invitación')
         setAgendaPacienteNotFound(true)
         return
       }
@@ -1381,7 +1384,7 @@ export default function App() {
         })
         setAgendaPacienteNotFound(false)
         const tokenMsg = payload?.inviteToken ? ` Token de invitación: ${payload.inviteToken}` : ''
-        setStatusMsg(`✅ Paciente creado e invitado.${tokenMsg}`)
+        setOk(`Paciente creado e invitado.${tokenMsg}`)
         return payload
       })
 
@@ -1392,7 +1395,7 @@ export default function App() {
     if (!patientResult?.id) return
 
     const professionalId = Number(currentUser?.id || forms.citaCreate.profesionalId || selectedProfesionalId)
-    if (!professionalId) return setStatusMsg('❌ No se pudo identificar el profesional de la sesión')
+    if (!professionalId) return setError('No se pudo identificar el profesional de la sesión')
 
     await withFeedback(() => citaApi.create({
       pacienteId: Number(patientResult.id),
@@ -1446,7 +1449,7 @@ export default function App() {
       if (!match?.id) {
         setAgendaPacientePreview(null)
         setAgendaPacienteNotFound(true)
-        if (!silent) setStatusMsg('❌ No se encontró un paciente con ese RUT')
+        if (!silent) setError('No se encontró un paciente con ese RUT')
         return null
       }
 
@@ -1461,7 +1464,7 @@ export default function App() {
     } catch (error) {
       setAgendaPacientePreview(null)
       setAgendaPacienteNotFound(false)
-      if (!silent) setStatusMsg(`❌ ${error.message}`)
+      if (!silent) setError(error.message)
       return null
     } finally {
       setAgendaPacienteLoading(false)
@@ -1815,7 +1818,7 @@ export default function App() {
       ) : null}
       <div className="app-shell">
         <main className="content clean-content">
-          <StatusMessage message={statusMsg} />
+          <StatusMessage message={statusMsg} onClose={() => setStatusMsg(null)} />
           {renderScreen()}
         </main>
       </div>
