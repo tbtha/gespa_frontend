@@ -332,26 +332,70 @@ p { margin: 0; }
   font-size: 0.95rem;
 }
 
-.msg-box {
-  margin-bottom: 12px;
-  border-left: 4px solid var(--primary);
-  background: var(--primary-light);
-  border-radius: 8px;
-  padding: 12px 14px;
-  color: var(--primary-dark);
-  font-size: 0.9rem;
-  animation: slideDown 0.3s ease-out;
+/* STATUS MODAL */
+.status-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-out;
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.status-modal {
+  position: relative;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 32px 40px 28px;
+  min-width: 300px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+  border-top: 4px solid var(--primary);
+  animation: scaleIn 0.2s ease-out;
+  text-align: center;
+}
+
+.status-modal--success { border-top-color: var(--success); }
+.status-modal--error   { border-top-color: var(--danger); }
+.status-modal--warning { border-top-color: var(--warning); }
+
+.status-modal__close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+.status-modal__close:hover {
+  background: var(--bg-alt);
+  color: var(--text);
+}
+
+.status-modal__message {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 /* FORMS */
